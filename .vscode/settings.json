@@ -1,0 +1,7 @@
+{
+    "python.defaultInterpreterPath": "C:\\Users\\sue\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+    "python.analysis.extraPaths": [],
+    "python.analysis.disabled": [],
+    "python.analysis.typeCheckingMode": "basic",
+    "ollama-autocoder.model": "qwen2.5-coder:7b-instruct-q4_k_m"
+}
