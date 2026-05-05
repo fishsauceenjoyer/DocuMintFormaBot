@@ -14,20 +14,20 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# ID чатов для разных типов документов (захардкодить или в БД)
+# ID чатов для разных типов документов (из .env)
 ROUTING = {
-    "sanepid": -100123456789,  # чат санэпид
-    "bhp": -100987654321,  # чат BHP
-    "psychotests": 123456789,  # личка менеджера
-    "pesel": -100123456788,  # чат PESEL
-    "default": 555555555,  # куда всё остальное
+    "sanepid": int(os.getenv("ROUTING_SANEPID", "-100123456789")),
+    "bhp": int(os.getenv("ROUTING_BHP", "-100987654321")),
+    "psychotests": int(os.getenv("ROUTING_PSYCHOTESTS", "123456789")),
+    "pesel": int(os.getenv("ROUTING_PESEL", "-100123456788")),
+    "default": int(os.getenv("ROUTING_DEFAULT", "555555555")),
 }
 
-# Реквизиты для оплаты
+# Реквизиты для оплаты (из .env)
 PAYMENT_DETAILS = {
-    "blik": "Номер телефона: +48 123 456 789",
-    "uah": "ПриватБанк: 5168 7456 1234 5678\nПолучатель: Ivanov Ivan",
-    "usdt": "TRC20: TXYZ... (кошелек)",
+    "blik": os.getenv("PAYMENT_BLIK", "Номер телефона: +48 123 456 789"),
+    "uah": os.getenv("PAYMENT_UAH", "ПриватБанк: 5168 7456 1234 5678\nПолучатель: Ivanov Ivan"),
+    "usdt": os.getenv("PAYMENT_USDT", "TRC20: TXYZ... (кошелек)"),
 }
 
 # Стоимость доставки
