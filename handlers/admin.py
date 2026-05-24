@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from fsm.states import AdminState
+from utils.auth import admin_only, is_admin
 
 router = Router()
 
@@ -39,6 +40,7 @@ def extract_order_id(text: str) -> Optional[str]:
 
 
 @router.message(Command("send_doc"))
+@admin_only
 async def cmd_send_doc(message: Message, state: FSMContext):
     """
     Команда менеджера для отправки готового документа клиенту.
@@ -62,6 +64,7 @@ async def cmd_send_doc(message: Message, state: FSMContext):
 
 
 @router.message(Command("track"))
+@admin_only
 async def cmd_track(message: Message, state: FSMContext):
     """
     Команда менеджера для отправки трек-номера клиенту.
@@ -115,6 +118,10 @@ async def callback_send_doc(callback: CallbackQuery, state: FSMContext):
         callback: CallbackQuery с data вида "send_doc_ORDER_123ABC".
         state: Контекст FSM для установки состояния ожидания файла.
     """
+    # Check admin rights
+    if callback.from_user and not is_admin(callback.from_user.username):
+        await callback.answer("⛔ У вас нет прав для этого действия.", show_alert=True)
+        return
     if not callback.data:
         await callback.answer("Ошибка: данные не найдены", show_alert=True)
         return
@@ -148,6 +155,10 @@ async def callback_send_track(callback: CallbackQuery, state: FSMContext):
         callback: CallbackQuery с data вида "send_track_ORDER_123ABC".
         state: Контекст FSM для установки состояния ожидания трек-номера.
     """
+    # Check admin rights
+    if callback.from_user and not is_admin(callback.from_user.username):
+        await callback.answer("⛔ У вас нет прав для этого действия.", show_alert=True)
+        return
     if not callback.data:
         await callback.answer("Ошибка: данные не найдены", show_alert=True)
         return
@@ -180,6 +191,10 @@ async def callback_order_done(callback: CallbackQuery, state: FSMContext):
         callback: CallbackQuery с data вида "order_done_ORDER_123ABC".
         state: Контекст FSM (не используется).
     """
+    # Check admin rights
+    if callback.from_user and not is_admin(callback.from_user.username):
+        await callback.answer("⛔ У вас нет прав для этого действия.", show_alert=True)
+        return
     if not callback.data:
         await callback.answer("Ошибка: данные не найдены", show_alert=True)
         return
@@ -226,12 +241,38 @@ async def process_document_file(message: Message, state: FSMContext):
         )
         return
 
-    # Send to client (in real system, look up client_id from order)
-    # await send_document_to_client(message.bot, client_id, order_id, file_id)
+    # Look up client info from orders storage
+    with _orders_lock:
+        order_info = orders.get(order_id)
+
+    if order_info is None or not order_info.get("user_id"):
+        await message.answer(
+            f"❌ Заказ {order_id} не найден. Невозможно определить клиента.\n\n"
+            "Убедитесь, что номер заказа правильный."
+        )
+        await state.clear()
+        return
+
+    client_id = order_info["user_id"]
+
+    if message.bot is None:
+        await message.answer("❌ Ошибка бота. Попробуйте ещё раз.")
+        await state.clear()
+        return
+
+    # Actually send the document to the client
+    from utils.router import send_document_to_client
+
+    await send_document_to_client(
+        bot=message.bot,
+        client_id=client_id,
+        order_id=order_id,
+        file_id=file_id,
+    )
 
     await message.answer(
-        f"✅ Документ для заказа {order_id} отправлен клиенту!\n\n"
-        "⚠️ Примечание: для реальной отправки нужно связать заказ с клиентом в базе данных."
+        f"✅ Документ для заказа {order_id} отправлен клиенту (ID: {client_id})!\n\n"
+        f"📄 Файл документа передан."
     )
 
     await state.clear()
@@ -258,13 +299,38 @@ async def process_tracking_number(message: Message, state: FSMContext):
     order_id = data.get("order_id", "UNKNOWN")
     tracking = message.text.strip()
 
-    # Send to client (in real system, look up client_id from order)
-    # await send_tracking_to_client(message.bot, client_id, order_id, tracking)
+    # Look up client info from orders storage
+    with _orders_lock:
+        order_info = orders.get(order_id)
+
+    if order_info is None or not order_info.get("user_id"):
+        await message.answer(
+            f"❌ Заказ {order_id} не найден. Невозможно определить клиента.\n\n"
+            "Убедитесь, что номер заказа правильный."
+        )
+        await state.clear()
+        return
+
+    client_id = order_info["user_id"]
+
+    if message.bot is None:
+        await message.answer("❌ Ошибка бота. Попробуйте ещё раз.")
+        await state.clear()
+        return
+
+    # Actually send the tracking number to the client
+    from utils.router import send_tracking_to_client
+
+    await send_tracking_to_client(
+        bot=message.bot,
+        client_id=client_id,
+        order_id=order_id,
+        tracking_number=tracking,
+    )
 
     await message.answer(
-        f"✅ Трек-номер для заказа {order_id} отправлен клиенту!\n\n"
-        f"Трек: `{tracking}`\n\n"
-        "⚠️ Примечание: для реальной отправки нужно связать заказ с клиентом в базе данных.",
+        f"✅ Трек-номер для заказа {order_id} отправлен клиенту (ID: {client_id})!\n\n"
+        f"🔢 Трек: `{tracking}`",
         parse_mode="Markdown",
     )
 
@@ -272,49 +338,73 @@ async def process_tracking_number(message: Message, state: FSMContext):
 
 
 @router.message(Command("orders"))
+@admin_only
 async def cmd_orders_list(message: Message, state: FSMContext):
     """
     Команда /orders — показывает список всех заказов (для менеджера).
 
-    Отображает номера заказов, их статусы и суммы из локального хранилища.
-    В продакшене данные должны загружаться из базы данных.
+    Загружает заказы из базы данных и отображает номера заказов,
+    их статусы и суммы.
 
     Args:
         message: Сообщение с командой /orders.
         state: Контекст FSM (не используется).
     """
-    if not orders:
-        await message.answer("📋 Заказов пока нет.")
-        return
+    from db.crud import SessionLocal, get_all_orders
 
-    text = "📋 **Список заказов:**\n\n"
-    for order_id, order_data in orders.items():
-        status = order_data.get("status", "unknown")
-        total = order_data.get("total_price", 0)
-        text += f"• {order_id} - {status} - {total} zł\n"
+    db = SessionLocal()
+    try:
+        all_orders = get_all_orders(db)
+        if not all_orders:
+            await message.answer("📋 Заказов пока нет.")
+            return
 
-    await message.answer(text, parse_mode="Markdown")
+        text = "📋 **Список заказов:**\n\n"
+        for order in all_orders:
+            text += f"• {order.order_id} - {order.status} - {order.total_price} zł\n"
+
+        await message.answer(text, parse_mode="Markdown")
+    finally:
+        db.close()
 
 
 @router.message(Command("stats"))
+@admin_only
 async def cmd_stats(message: Message):
     """
     Команда /stats — показывает статистику заказов (для администратора).
 
-    Отображает общее количество заказов из локального хранилища.
-    Для полной статистики требуется подключение базы данных.
+    Загружает статистику всех заказов из базы данных:
+    общее количество, распределение по статусам.
 
     Args:
         message: Сообщение с командой /stats.
     """
-    await message.answer(
-        "📊 **Статистика:**\n\n"
-        f"Всего заказов: {len(orders)}\n\n"
-        "Для полной статистики нужно подключить базу данных."
-    )
+    from db.crud import SessionLocal, get_order_stats
+
+    db = SessionLocal()
+    try:
+        stats = get_order_stats(db)
+
+        text = (
+            "📊 **Статистика заказов:**\n\n"
+            f"📋 Всего: {stats['total']}\n"
+            f"⏳ Ожидают оплаты: {stats['pending']}\n"
+            f"✅ Оплачены: {stats['paid']}\n"
+            f"🔄 В обработке: {stats['processing']}\n"
+            f"📄 Готовы: {stats['ready']}\n"
+            f"📦 Отправлены: {stats['shipped']}\n"
+            f"🎉 Выполнены: {stats['completed']}\n"
+            f"❌ Отменены: {stats['cancelled']}"
+        )
+
+        await message.answer(text)
+    finally:
+        db.close()
 
 
 @router.message(Command("help_admin"))
+@admin_only
 async def cmd_help_admin(message: Message):
     """
     Команда /help_admin — показывает справку по доступным командам менеджера.
