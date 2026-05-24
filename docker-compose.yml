@@ -1,0 +1,42 @@
+# ============================================
+# Docker Compose for Telegram Bot (tg-bot-freelance2)
+# ============================================
+
+version: "3.8"
+
+services:
+  bot:
+    build: .
+    container_name: tg-bot-freelance
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Mount .env file for configuration
+      - ./.env:/app/.env:ro
+      # Persist SQLite database between restarts
+      - ./data:/app/data
+      # Mount bot.db from data directory
+    environment:
+      - DATABASE_URL=sqlite:///data/bot.db
+    # Uncomment for Redis support:
+    # depends_on:
+    #   - redis
+
+  # Uncomment for production Redis storage:
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: tg-bot-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+# volumes:
+#   redis_data:

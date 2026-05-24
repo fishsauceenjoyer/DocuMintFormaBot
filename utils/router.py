@@ -15,6 +15,10 @@ from aiogram import Bot
 from config import ROUTING
 from templates.documents import get_template
 
+# Import admin's order storage to save user_id for later client notifications
+# This is a bridging fix; in production, use database
+from handlers.admin import orders
+
 logger = logging.getLogger(__name__)
 
 
@@ -116,6 +120,15 @@ async def send_order_to_manager(
     await bot.send_message(
         chat_id=target, text=f"```json\n{json_data}\n```", parse_mode="Markdown"
     )
+
+    # Save order info (including user_id for admin lookup) to the orders dict
+    # This enables admin to send documents/tracking back to the correct client
+    orders[order_data["order_id"]] = {
+        "status": "new",
+        "user_id": user_id,
+        "username": order_data.get("user", {}).get("username", "unknown"),
+        "total_price": order_data.get("total_price", 0),
+    }
 
     logger.info(f"Order {order_data['order_id']} sent to {target}")
     return target

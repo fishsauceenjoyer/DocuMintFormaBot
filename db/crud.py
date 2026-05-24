@@ -285,6 +285,70 @@ def update_order_payment_proof(db: Session, order: Order, file_id: str):
     db.commit()
 
 
+def get_all_orders(db: Session) -> List[Order]:
+    """
+    Возвращает все заказы из базы данных, отсортированные по дате (сначала новые).
+
+    Args:
+        db: Сессия базы данных.
+
+    Returns:
+        Список всех заказов.
+    """
+    return db.query(Order).order_by(Order.created_at.desc()).all()
+
+
+def get_orders_by_status(db: Session, status: str) -> List[Order]:
+    """
+    Возвращает заказы с указанным статусом.
+
+    Args:
+        db: Сессия базы данных.
+        status: Статус для фильтрации (см. OrderStatus enum).
+
+    Returns:
+        Список заказов с указанным статусом.
+    """
+    return (
+        db.query(Order)
+        .filter(Order.status == status)
+        .order_by(Order.created_at.desc())
+        .all()
+    )
+
+
+def get_order_stats(db: Session) -> dict:
+    """
+    Возвращает статистику по заказам.
+
+    Args:
+        db: Сессия базы данных.
+
+    Returns:
+        Словарь с ключами total, pending, paid, processing,
+        ready, shipped, completed, cancelled.
+    """
+    total = db.query(Order).count()
+    pending = db.query(Order).filter(Order.status == "pending").count()
+    paid = db.query(Order).filter(Order.status == "paid").count()
+    processing = db.query(Order).filter(Order.status == "processing").count()
+    ready = db.query(Order).filter(Order.status == "ready").count()
+    shipped = db.query(Order).filter(Order.status == "shipped").count()
+    completed = db.query(Order).filter(Order.status == "completed").count()
+    cancelled = db.query(Order).filter(Order.status == "cancelled").count()
+
+    return {
+        "total": total,
+        "pending": pending,
+        "paid": paid,
+        "processing": processing,
+        "ready": ready,
+        "shipped": shipped,
+        "completed": completed,
+        "cancelled": cancelled,
+    }
+
+
 # Order item operations
 def create_order_item(
     db: Session,
