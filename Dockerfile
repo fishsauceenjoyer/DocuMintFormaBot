@@ -1,5 +1,5 @@
 # ============================================
-# Dockerfile for Telegram Bot (tg-bot-freelance2)
+# Dockerfile for DocuMintFormaBot
 # ============================================
 
 # Stage 1: Build stage

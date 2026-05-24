@@ -1,13 +1,11 @@
 # ============================================
-# Docker Compose for Telegram Bot (tg-bot-freelance2)
+# Docker Compose for DocuMintFormaBot
 # ============================================
-
-version: "3.8"
 
 services:
   bot:
     build: .
-    container_name: tg-bot-freelance
+    container_name: documintformabot
     restart: unless-stopped
     env_file:
       - .env
