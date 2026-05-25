@@ -1,14 +1,14 @@
-"""
-CRUD операции для работы с базой данных SQLite.
+"""Database access layer.
 
-Содержит функции для создания, чтения, обновления данных
-пользователей, документов, заказов и позиций заказов.
-Использует SQLAlchemy ORM для взаимодействия с БД.
+The module owns the SQLAlchemy engine/session factory and exposes small CRUD
+helpers for users, document types, orders, order items, and admin statistics.
+DATABASE_URL comes from config.py, so local SQLite and hosted Postgres use the
+same application code.
 """
 
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -433,7 +433,7 @@ def init_default_document_types(db: Session):
     ]
 
     for doc_type in default_types:
-        existing = get_document_type(db, doc_type["code"])
+        existing = get_document_type(db, cast(str, doc_type["code"]))
         if not existing:
             new_type = DocumentType(**doc_type)
             db.add(new_type)

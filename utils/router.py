@@ -1,9 +1,8 @@
-"""
-Маршрутизация заказов соответствующим менеджерам.
+"""Telegram delivery helpers for manager and client messages.
 
-Содержит функции для отправки заказов в нужные чаты менеджеров
-в зависимости от типа документа, а также для пересылки готовых
-документов и трек-номеров клиентам.
+Order handlers call this module after checkout. It chooses the manager chat by
+document type, sends the human-readable order and JSON payload, and stores the
+minimum metadata admins need to send documents or tracking updates later.
 """
 
 import json
@@ -13,11 +12,11 @@ from typing import Optional
 from aiogram import Bot
 
 from config import ROUTING
-from templates.documents import get_template
 
 # Import admin's order storage to save user_id for later client notifications
 # This is a bridging fix; in production, use database
 from handlers.admin import _orders_lock, orders
+from templates.documents import get_template
 
 logger = logging.getLogger(__name__)
 
@@ -134,9 +133,7 @@ async def send_order_to_manager(
             photo=payment_proof_file_id,
         )
     else:
-        await _safe_send(
-            bot=bot, chat_id=target, text=text, parse_mode="Markdown"
-        )
+        await _safe_send(bot=bot, chat_id=target, text=text, parse_mode="Markdown")
 
     # Send JSON for easy forwarding
     json_data = json.dumps(order_data, ensure_ascii=False, indent=2)
@@ -181,9 +178,7 @@ async def send_tracking_to_client(
         f"Спасибо за заказ! 👋"
     )
 
-    await _safe_send(
-        bot=bot, chat_id=client_id, text=text, parse_mode="Markdown"
-    )
+    await _safe_send(bot=bot, chat_id=client_id, text=text, parse_mode="Markdown")
 
 
 async def send_document_to_client(
@@ -217,9 +212,7 @@ async def send_document_to_client(
         )
     except Exception as e:
         logger.error(f"Error sending document: {e}")
-        await _safe_send(
-            bot=bot, chat_id=client_id, text=text, parse_mode="Markdown"
-        )
+        await _safe_send(bot=bot, chat_id=client_id, text=text, parse_mode="Markdown")
 
 
 async def forward_to_manager(
@@ -245,8 +238,6 @@ async def forward_to_manager(
         f"```\n{message_text}\n```"
     )
 
-    await _safe_send(
-        bot=bot, chat_id=target, text=text, parse_mode="Markdown"
-    )
+    await _safe_send(bot=bot, chat_id=target, text=text, parse_mode="Markdown")
 
     logger.info(f"Help request from user {user_id} forwarded to manager")

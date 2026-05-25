@@ -1,4 +1,10 @@
-"""Order handlers - core order flow (only Russian)."""
+"""Customer order flow handlers.
+
+This module contains the main FSM path: document selection, quantity, form
+fields, delivery, payment choice, payment proof, manager notification, and
+database persistence. Temporary in-progress cart data lives in user_sessions;
+completed orders are saved through db.crud.
+"""
 
 import asyncio
 import datetime
@@ -10,14 +16,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from config import DELIVERY_PRICE
-from fsm.states import OrderState
-from keyboards.buttons import (delivery_keyboard,
-                               quantity_keyboard)
-from templates.documents import get_template, get_template_price
 
 # Import DB functions (lazy — imported inside handlers to avoid circular imports)
 from db.crud import SessionLocal, create_order, create_order_item
 from db.models import Order
+from fsm.states import OrderState
+from keyboards.buttons import delivery_keyboard, quantity_keyboard
+from templates.documents import get_template, get_template_price
 
 router = Router()
 
@@ -37,8 +42,6 @@ async def _generate_order_id() -> str:
         Уникальный номер заказа (str).
     """
     today = datetime.datetime.utcnow().strftime("%Y%m%d")
-    from config import DATABASE_URL
-
     max_attempts = 5
     for _ in range(max_attempts):
         suffix = secrets.token_hex(2).upper()  # 4 hex chars
@@ -239,7 +242,8 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
             )
 
             await message.answer(
-                f"✅ *{session['current_quantity']}x {template['name']}* добавлено в заказ!\n\n"
+                f"✅ *{session['current_quantity']}x {template['name']}* "
+                "добавлено в заказ!\n\n"
                 "Что делаем дальше?",
                 reply_markup=delivery_keyboard(),
             )
@@ -363,7 +367,7 @@ async def process_delivery_choice(callback: CallbackQuery, state: FSMContext):
                 "Имя и фамилия:\n"
                 "Номер телефона:\n"
                 "Email:\n"
-                "Номер пачкомата или адрес"
+                "Номер пачкомата или адрес",
             )
         await state.set_state(OrderState.filling_delivery)
         await state.update_data(current_step="Заполнение данных доставки")
@@ -380,7 +384,9 @@ async def process_delivery_choice(callback: CallbackQuery, state: FSMContext):
         if isinstance(callback.message, Message):
             await callback.message.edit_text(text, reply_markup=payment_keyboard())
         elif callback.bot:
-            await callback.bot.send_message(callback.from_user.id, text, reply_markup=payment_keyboard())
+            await callback.bot.send_message(
+                callback.from_user.id, text, reply_markup=payment_keyboard()
+            )
         await state.set_state(OrderState.choosing_payment)
 
     await callback.answer()
@@ -473,7 +479,9 @@ async def process_payment(callback: CallbackQuery, state: FSMContext):
     else:
         details = PAYMENT_DETAILS["usdt"]
 
-    warning = "\n\n⚠️ Если оплата не сегодня, перед оплатой уточните изменения у менеджера."
+    warning = (
+        "\n\n⚠️ Если оплата не сегодня, перед оплатой уточните изменения у менеджера."
+    )
 
     message_text = (
         f"💳 **Способ оплаты: {payment_method.upper()}**\n\n"
@@ -484,7 +492,9 @@ async def process_payment(callback: CallbackQuery, state: FSMContext):
     if isinstance(callback.message, Message):
         await callback.message.edit_text(message_text, parse_mode="Markdown")
     elif callback.bot:
-        await callback.bot.send_message(callback.from_user.id, message_text, parse_mode="Markdown")
+        await callback.bot.send_message(
+            callback.from_user.id, message_text, parse_mode="Markdown"
+        )
 
     await state.set_state(OrderState.waiting_for_payment_proof)
     await state.update_data(current_step="Ожидание подтверждения оплаты")
@@ -550,6 +560,7 @@ async def process_payment_proof(message: Message, state: FSMContext):
         )
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).error(f"Failed to send order to manager: {e}")
         await message.answer(
             f"✅ **Заказ #{order_id} создан, но не удалось отправить менеджеру.**\n\n"
@@ -622,7 +633,9 @@ async def callback_add_more(callback: CallbackQuery, state: FSMContext):
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=doc_kb(docs))
     elif callback.bot:
-        await callback.bot.send_message(callback.from_user.id, text, reply_markup=doc_kb(docs))
+        await callback.bot.send_message(
+            callback.from_user.id, text, reply_markup=doc_kb(docs)
+        )
     await state.set_state(OrderState.choosing_document)
     await callback.answer()
 
@@ -651,7 +664,9 @@ async def callback_clear_cart(callback: CallbackQuery, state: FSMContext):
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=main_menu_keyboard())
     elif callback.bot:
-        await callback.bot.send_message(callback.from_user.id, text, reply_markup=main_menu_keyboard())
+        await callback.bot.send_message(
+            callback.from_user.id, text, reply_markup=main_menu_keyboard()
+        )
     await state.set_state(OrderState.choosing_document)
     await callback.answer()
 
@@ -682,9 +697,7 @@ async def callback_checkout(callback: CallbackQuery, state: FSMContext):
         name = doc_name["name"] if doc_name else cart_item["type"]
         price = get_template_price(cart_item["type"])
         item_total = price * cart_item["quantity"]
-        summary_lines.append(
-            f"📄 {name} x{cart_item['quantity']} = {item_total} zł"
-        )
+        summary_lines.append(f"📄 {name} x{cart_item['quantity']} = {item_total} zł")
 
     delivery = session.get("delivery")
     if delivery:
@@ -702,7 +715,9 @@ async def callback_checkout(callback: CallbackQuery, state: FSMContext):
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=payment_keyboard())
     elif callback.bot:
-        await callback.bot.send_message(callback.from_user.id, text, reply_markup=payment_keyboard())
+        await callback.bot.send_message(
+            callback.from_user.id, text, reply_markup=payment_keyboard()
+        )
     else:
         await callback.answer()
         return

@@ -10,18 +10,17 @@
     - Ожидание подтверждения оплаты
 """
 
-import datetime
-
 import pytest
-from aiogram.types import Chat, Message, User
+from conftest import MockCallback  # type: ignore[import-not-found]
 
 from fsm.states import OrderState
 
 # Import handlers early to avoid async fixture issues
-from handlers.order import process_document_choice
-from handlers.order import process_quantity
-from handlers.order import process_delivery_choice
-from conftest import MockCallback, MockMessage
+from handlers.order import (
+    process_delivery_choice,
+    process_document_choice,
+    process_quantity,
+)
 
 
 @pytest.mark.asyncio
