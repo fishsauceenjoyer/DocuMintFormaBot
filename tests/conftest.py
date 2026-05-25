@@ -7,10 +7,9 @@
 
 import datetime
 from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from aiogram.types import CallbackQuery, Chat, Message, User
+from aiogram.types import CallbackQuery, Chat, InaccessibleMessage, Message, User
 
 
 class MockBot:
@@ -40,23 +39,27 @@ class MockBot:
         return True
 
 
-class MockMessage:
-    """Мок-объект сообщения для тестирования."""
+class MockMessage(Message):
+    """Мок-объект сообщения для тестирования, наследующий от aiogram.types.Message."""
 
     def __init__(self, text=None, message_id=1, chat_id=123, user_id=123):
-        self.text = text
-        self.message_id = message_id
-        self.chat = Chat(id=chat_id, type="private")
-        self.from_user = User(
-            id=user_id, is_bot=False, first_name="Test", username="testuser"
+        # Create minimal required params for Message
+        chat = Chat(id=chat_id, type="private")
+        from_user = User(id=user_id, is_bot=False, first_name="Test", username="testuser")
+        date = datetime.datetime.now()
+        # Call parent init with required fields FIRST
+        super().__init__(
+            message_id=message_id,
+            date=date,
+            chat=chat,
+            from_user=from_user,
+            text=text,
         )
-        self.bot = MockBot()
         self._edited_text: Optional[str] = None
         self._answered_text: Optional[str] = None
-        self.photo = None
-        self.document = None
 
     async def edit_text(self, text, **kwargs):
+        """Override parent edit_text to store locally instead of calling Telegram API."""
         self._edited_text = text
         return True
 
@@ -65,22 +68,26 @@ class MockMessage:
         return True
 
 
-class MockCallback:
-    """Мок-объект callback-запроса для тестирования."""
+class MockCallback(CallbackQuery):
+    """Мок-объект callback-запроса для тестирования, наследующий от aiogram.types.CallbackQuery."""
 
     def __init__(self, data=None, message_accessible=True, user_id=123):
-        self.data = data
-        self.from_user = User(
-            id=user_id, is_bot=False, first_name="Test", username="testuser"
-        )
+        user = User(id=user_id, is_bot=False, first_name="Test", username="testuser")
         if message_accessible:
-            self.message = MockMessage(chat_id=user_id)
+            msg = MockMessage(chat_id=user_id)
         else:
-            from aiogram.types import InaccessibleMessage
-            self.message = InaccessibleMessage(
+            msg = InaccessibleMessage(
                 message_id=1, date=0, chat=Chat(id=user_id, type="private")
             )
-        self.bot = MockBot()
+
+        # Call parent init with required fields
+        super().__init__(
+            id=f"callback_{user_id}_{datetime.datetime.now().timestamp()}",
+            from_user=user,
+            chat_instance=f"instance_{user_id}",
+            message=msg,
+            data=data,
+        )
         self._answered: bool = False
         self._answered_text: Optional[str] = None
         self._show_alert: Optional[bool] = None
