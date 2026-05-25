@@ -1,27 +1,24 @@
-"""Main entry point for the Telegram bot."""
+"""Application entry point.
+
+The module validates environment configuration, initializes the database,
+registers all aiogram routers, and starts Telegram polling.
+"""
 
 import logging
 import os
+from typing import Any
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
-from dotenv import load_dotenv
 
-from config import validate_config
+from config import BOT_TOKEN, validate_config
+from db.crud import init_db
 from handlers.admin import router as admin_router
 from handlers.fast_order import router as fast_order_router
 from handlers.order import router as order_router
-# Import handlers
 from handlers.start import router as start_router
 
-# Load environment variables
-load_dotenv()
-
-# Validate configuration BEFORE importing anything else
 validate_config()
-
-# Initialize database
-from db.crud import init_db
 init_db()
 
 # Configure logging
@@ -30,28 +27,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Get token
-from config import BOT_TOKEN
 if BOT_TOKEN is None:
     raise ValueError("BOT_TOKEN not found in .env file")
 
 
 async def main() -> None:
-    """
-    Запускает бота и начинает обработку сообщений от пользователей.
+    """Start polling and wire together storage, middlewares, and routers.
 
-    Функция выполняет следующие шаги:
-    1. Создаёт экземпляр Bot с токеном из переменной окружения BOT_TOKEN.
-    2. Создаёт Dispatcher с хранилищем состояний (MemoryStorage).
-    3. Подключает все обработчики команд (start, order, fast_order, admin).
-    4. Запускает цикл опроса Telegram API (polling) для получения новых сообщений.
-
-    Внимание: MemoryStorage хранит данные сессий в оперативной памяти,
-    поэтому после перезапуска бота все незавершённые заказы будут потеряны.
-    В продакшене рекомендуется заменить на RedisStorage.
-
-    Raises:
-        ValueError: Если BOT_TOKEN не найден в переменных окружения.
+    Completed orders are stored in the SQL database. Conversation state is
+    stored in Redis when REDIS_URL is present; otherwise MemoryStorage is used
+    and unfinished user flows are lost after process restart.
     """
     logger.info("Starting bot...")
 
@@ -60,7 +45,8 @@ async def main() -> None:
     if redis_url:
         try:
             from aiogram.fsm.storage.redis import RedisStorage
-            storage = RedisStorage.from_url(redis_url)
+
+            storage: Any = RedisStorage.from_url(redis_url)
             logger.info("Using RedisStorage (production)")
         except Exception as e:
             logger.warning(f"Failed to connect to Redis at {redis_url}: {e}")
@@ -70,11 +56,12 @@ async def main() -> None:
         logger.info("REDIS_URL not set, using MemoryStorage (sessions lost on restart)")
         storage = MemoryStorage()
 
-    bot = Bot(token=BOT_TOKEN) # type: ignore
+    bot = Bot(token=BOT_TOKEN)  # type: ignore
     dp = Dispatcher(storage=storage)
 
     # Register middleware
     from utils.middleware import LoggingMiddleware, RegistrationMiddleware
+
     dp.message.middleware(RegistrationMiddleware())
     dp.callback_query.middleware(RegistrationMiddleware())
     dp.message.middleware(LoggingMiddleware())

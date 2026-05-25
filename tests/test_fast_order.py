@@ -12,8 +12,7 @@ import sys
 from unittest.mock import patch
 
 import pytest
-from aiogram.types import (Chat, InaccessibleMessage, Message,
-                           User)
+from aiogram.types import Chat, InaccessibleMessage, Message, User
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -182,7 +181,7 @@ async def test_callback_fast_order_accessible_message():
     await callback_fast_order(callback, state)
 
     # Verify message was edited
-    # Type check to satisfy Pylance - we know it's MockMessage since message_accessible=True
+    # message_accessible=True guarantees MockMessage here.
     assert isinstance(callback.message, MockMessage)
     assert hasattr(callback.message, "_edited_text")
     assert callback.message._edited_text is not None
