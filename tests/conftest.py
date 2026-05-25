@@ -1,8 +1,8 @@
-"""
-Общие фикстуры (fixtures) для тестов Telegram-бота.
+"""Shared pytest fixtures and Telegram test doubles.
 
-Предоставляет мок-объекты для тестирования хендлеров без
-реального подключения к Telegram API.
+The mocks mimic the aiogram objects used by handlers and record sent/edited
+messages locally, so unit tests can exercise FSM logic without Telegram API
+network calls.
 """
 
 import datetime
@@ -31,11 +31,21 @@ class MockBot:
         )
 
     async def send_photo(self, chat_id, photo, caption=None, **kwargs):
-        self._mock_photo_sent = {"chat_id": chat_id, "photo": photo, "caption": caption, "kwargs": kwargs}
+        self._mock_photo_sent = {
+            "chat_id": chat_id,
+            "photo": photo,
+            "caption": caption,
+            "kwargs": kwargs,
+        }
         return True
 
     async def send_document(self, chat_id, document, caption=None, **kwargs):
-        self._mock_document_sent = {"chat_id": chat_id, "document": document, "caption": caption, "kwargs": kwargs}
+        self._mock_document_sent = {
+            "chat_id": chat_id,
+            "document": document,
+            "caption": caption,
+            "kwargs": kwargs,
+        }
         return True
 
 
@@ -45,7 +55,9 @@ class MockMessage(Message):
     def __init__(self, text=None, message_id=1, chat_id=123, user_id=123):
         # Create minimal required params for Message
         chat = Chat(id=chat_id, type="private")
-        from_user = User(id=user_id, is_bot=False, first_name="Test", username="testuser")
+        from_user = User(
+            id=user_id, is_bot=False, first_name="Test", username="testuser"
+        )
         date = datetime.datetime.now()
         # Call parent init with required fields FIRST
         super().__init__(
@@ -59,7 +71,7 @@ class MockMessage(Message):
         self._answered_text: Optional[str] = None
 
     async def edit_text(self, text, **kwargs):
-        """Override parent edit_text to store locally instead of calling Telegram API."""
+        """Store edited text locally instead of calling Telegram API."""
         self._edited_text = text
         return True
 
@@ -69,7 +81,7 @@ class MockMessage(Message):
 
 
 class MockCallback(CallbackQuery):
-    """Мок-объект callback-запроса для тестирования, наследующий от aiogram.types.CallbackQuery."""
+    """CallbackQuery test double that stores callback answers locally."""
 
     def __init__(self, data=None, message_accessible=True, user_id=123):
         user = User(id=user_id, is_bot=False, first_name="Test", username="testuser")
@@ -143,6 +155,7 @@ def mock_callback():
 def clean_user_sessions():
     """Фикстура: очищает глобальное хранилище сессий между тестами."""
     from handlers.order import user_sessions
+
     user_sessions.clear()
     yield
     user_sessions.clear()

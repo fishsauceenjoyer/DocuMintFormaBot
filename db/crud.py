@@ -1,25 +1,30 @@
-"""
-CRUD операции для работы с базой данных SQLite.
+"""Database access layer.
 
-Содержит функции для создания, чтения, обновления данных
-пользователей, документов, заказов и позиций заказов.
-Использует SQLAlchemy ORM для взаимодействия с БД.
+The module owns the SQLAlchemy engine/session factory and exposes small CRUD
+helpers for users, document types, orders, order items, and admin statistics.
+DATABASE_URL comes from config.py, so local SQLite and hosted Postgres use the
+same application code.
 """
 
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from config import DATABASE_URL
 from db.models import Base, DocumentType, Order, OrderItem, User
 
-# Create engine - in production, use proper database URL
-engine = create_engine(
-    "sqlite:///bot.db", connect_args={"check_same_thread": False}, poolclass=StaticPool
-)
+engine_kwargs = {}
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs = {
+        "connect_args": {"check_same_thread": False},
+        "poolclass": StaticPool,
+    }
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 # Create tables
 Base.metadata.create_all(engine)
@@ -166,6 +171,7 @@ def create_order(
     order_id: str,
     user_id: int,
     total_price: int,
+    status: str = "pending",
     payment_method: Optional[str] = None,
     payment_proof_file_id: Optional[str] = None,
     delivery: Optional[dict] = None,
@@ -182,6 +188,7 @@ def create_order(
         order_id: Уникальный номер заказа (ORDER_XXXXXXXX).
         user_id: ID пользователя в локальной БД.
         total_price: Итоговая сумма заказа в злотых.
+        status: Начальный статус заказа.
         payment_method: Способ оплаты (blik/uah/usdt).
         payment_proof_file_id: File_id фото/документа чека.
         delivery: Словарь с данными доставки (name, phone, email, paczkomat).
@@ -193,6 +200,7 @@ def create_order(
     order = Order(
         order_id=order_id,
         user_id=user_id,
+        status=status,
         total_price=total_price,
         payment_method=payment_method,
         payment_proof_file_id=payment_proof_file_id,
@@ -428,7 +436,7 @@ def init_default_document_types(db: Session):
     ]
 
     for doc_type in default_types:
-        existing = get_document_type(db, doc_type["code"])
+        existing = get_document_type(db, cast(str, doc_type["code"]))
         if not existing:
             new_type = DocumentType(**doc_type)
             db.add(new_type)

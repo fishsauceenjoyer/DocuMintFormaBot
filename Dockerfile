@@ -43,7 +43,7 @@ EXPOSE 8080
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD python -c "import sqlite3; sqlite3.connect('/app/bot.db').execute('SELECT 1')" || exit 1
+    CMD python -c "from config import validate_config; validate_config()" || exit 1
 
 # Run the bot
 CMD ["python", "main.py"]

@@ -12,8 +12,7 @@ import sys
 from unittest.mock import patch
 
 import pytest
-from aiogram.types import (Chat, InaccessibleMessage, Message,
-                           User)
+from aiogram.types import Chat, InaccessibleMessage, Message, User
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -182,7 +181,7 @@ async def test_callback_fast_order_accessible_message():
     await callback_fast_order(callback, state)
 
     # Verify message was edited
-    # Type check to satisfy Pylance - we know it's MockMessage since message_accessible=True
+    # message_accessible=True guarantees MockMessage here.
     assert isinstance(callback.message, MockMessage)
     assert hasattr(callback.message, "_edited_text")
     assert callback.message._edited_text is not None
@@ -240,49 +239,3 @@ async def test_process_fast_order():
     assert message.bot._mock_message_sent is not None
     assert "БЫСТРЫЙ ЗАКАЗ" in message.bot._mock_message_sent["text"]
     assert "Test order: passport" in message.bot._mock_message_sent["text"]
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    async def run_tests():
-        print("Running tests...")
-
-        # Test 1: Accessible message
-        print("\n=== Test 1: Accessible message ===")
-        callback = MockCallback(message_accessible=True)
-        state = MockFSMContext()
-        from handlers.fast_order import callback_fast_order
-
-        await callback_fast_order(callback, state)
-        print(f"✓ Message edited: {'_edited_text' in dir(callback.message)}")
-        print(
-            f"✓ State set: {state._data.get('state') == OrderState.fast_order_waiting}"
-        )
-
-        # Test 2: Inaccessible message
-        print("\n=== Test 2: Inaccessible message ===")
-        callback2 = MockCallback(message_accessible=False)
-        state2 = MockFSMContext()
-        await callback_fast_order(callback2, state2)
-        print(f"✓ Message sent via bot: {callback2.bot._mock_message_sent is not None}")
-        print(
-            f"✓ State set: {state2._data.get('state') == OrderState.fast_order_waiting}"
-        )
-
-        # Test 3: Process fast order
-        print("\n=== Test 3: Process fast order ===")
-        message = MockMessage(text="Test order", chat_id=123)
-        state3 = MockFSMContext()
-        state3._data["state"] = OrderState.fast_order_waiting
-        from handlers.fast_order import process_fast_order
-
-        with patch("handlers.fast_order.ROUTING", {"default": 555555555}):
-            await process_fast_order(message, state3)
-        mock_msg = message.bot._mock_message_sent
-        assert mock_msg is not None
-        print(f"✓ Message forwarded: {'БЫСТРЫЙ ЗАКАЗ' in mock_msg['text']}")
-
-        print("\n=== All tests passed! ===")
-
-    asyncio.run(run_tests())

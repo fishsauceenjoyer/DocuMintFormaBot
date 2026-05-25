@@ -1,9 +1,8 @@
-"""
-Маршрутизация заказов соответствующим менеджерам.
+"""Telegram delivery helpers for manager and client messages.
 
-Содержит функции для отправки заказов в нужные чаты менеджеров
-в зависимости от типа документа, а также для пересылки готовых
-документов и трек-номеров клиентам.
+Order handlers call this module after checkout. It chooses the manager chat by
+document type, sends the human-readable order and JSON payload, and stores the
+minimum metadata admins need to send documents or tracking updates later.
 """
 
 import json
@@ -11,13 +10,15 @@ import logging
 from typing import Optional
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardMarkup
 
 from config import ROUTING
-from templates.documents import get_template
 
 # Import admin's order storage to save user_id for later client notifications
 # This is a bridging fix; in production, use database
 from handlers.admin import _orders_lock, orders
+from keyboards.buttons import manager_order_keyboard
+from templates.documents import get_template
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ async def _safe_send(
     text: str,
     parse_mode: Optional[str] = None,
     photo: Optional[str] = None,
+    reply_markup: Optional[InlineKeyboardMarkup] = None,
 ) -> None:
     """
     Безопасная отправка сообщения/фото в Telegram чат.
@@ -39,6 +41,7 @@ async def _safe_send(
         text: Текст сообщения.
         parse_mode: Режим разметки (Markdown/HTML).
         photo: file_id фото (если нужно отправить фото).
+        reply_markup: Inline-клавиатура для сообщения.
     """
     try:
         if photo:
@@ -47,12 +50,14 @@ async def _safe_send(
                 photo=photo,
                 caption=text,
                 parse_mode=parse_mode,
+                reply_markup=reply_markup,
             )
         else:
             await bot.send_message(
                 chat_id=chat_id,
                 text=text,
                 parse_mode=parse_mode,
+                reply_markup=reply_markup,
             )
     except Exception as e:
         logger.warning(
@@ -124,6 +129,7 @@ async def send_order_to_manager(
     text += f"💳 **Оплата:** {order_data['payment_method']}\n"
 
     # Send with payment proof if available
+    manager_keyboard = manager_order_keyboard(order_data["order_id"])
     if payment_proof_file_id:
         text += "\n🖼 Доказательство оплаты: приложено ниже"
         await _safe_send(
@@ -132,10 +138,15 @@ async def send_order_to_manager(
             text=text,
             parse_mode="Markdown",
             photo=payment_proof_file_id,
+            reply_markup=manager_keyboard,
         )
     else:
         await _safe_send(
-            bot=bot, chat_id=target, text=text, parse_mode="Markdown"
+            bot=bot,
+            chat_id=target,
+            text=text,
+            parse_mode="Markdown",
+            reply_markup=manager_keyboard,
         )
 
     # Send JSON for easy forwarding
@@ -181,9 +192,7 @@ async def send_tracking_to_client(
         f"Спасибо за заказ! 👋"
     )
 
-    await _safe_send(
-        bot=bot, chat_id=client_id, text=text, parse_mode="Markdown"
-    )
+    await _safe_send(bot=bot, chat_id=client_id, text=text, parse_mode="Markdown")
 
 
 async def send_document_to_client(
@@ -217,9 +226,7 @@ async def send_document_to_client(
         )
     except Exception as e:
         logger.error(f"Error sending document: {e}")
-        await _safe_send(
-            bot=bot, chat_id=client_id, text=text, parse_mode="Markdown"
-        )
+        await _safe_send(bot=bot, chat_id=client_id, text=text, parse_mode="Markdown")
 
 
 async def forward_to_manager(
@@ -245,8 +252,6 @@ async def forward_to_manager(
         f"```\n{message_text}\n```"
     )
 
-    await _safe_send(
-        bot=bot, chat_id=target, text=text, parse_mode="Markdown"
-    )
+    await _safe_send(bot=bot, chat_id=target, text=text, parse_mode="Markdown")
 
     logger.info(f"Help request from user {user_id} forwarded to manager")

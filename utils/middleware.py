@@ -94,7 +94,8 @@ class LoggingMiddleware(BaseMiddleware):
                 )
             elif user is not None:
                 logger.info(
-                    f"Non-text message from @{user.username or 'unknown'} (ID: {user.id})"
+                    "Non-text message from "
+                    f"@{user.username or 'unknown'} (ID: {user.id})"
                 )
 
         elif isinstance(event, CallbackQuery):

@@ -1,23 +1,15 @@
-"""
-Шаблоны документов с динамическими полями для заполнения (только русский).
+"""Document catalog used by the order FSM.
 
-Содержит описание типов документов (санэпид, BHP, психотесты, PESEL),
-их полей для заполнения и вспомогательные функции для работы с шаблонами.
+Each template defines the public document code, display name, unit price, and
+ordered fields that the customer must fill in. Handlers use these definitions
+to ask questions and calculate totals.
 """
 
 from typing import Any, Dict, List, Optional
 
 
 class Field:
-    """
-    Описание одного поля в шаблоне документа.
-
-    Каждое поле содержит:
-        - id: уникальный идентификатор поля (например, "full_name", "birth_date")
-        - prompt: текст подсказки на русском языке
-        - type: тип поля (text, date, optional_text)
-        - optional: является ли поле необязательным
-    """
+    """Single input field definition inside a document template."""
 
     def __init__(
         self,
