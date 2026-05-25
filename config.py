@@ -1,9 +1,8 @@
-"""
-Конфигурация бота.
+"""Runtime configuration loaded from environment variables.
 
-Содержит настройки маршрутизации заказов по чатам менеджеров,
-платёжные реквизиты, стоимость доставки и другие константы.
-Значения загружаются из переменных окружения (.env файла).
+This is the single place for bot secrets, manager routing chat IDs, payment
+details, delivery price, and database URL. Import constants from here instead
+of reading environment variables in handlers directly.
 """
 
 import os
@@ -27,7 +26,9 @@ ROUTING = {
 # Реквизиты для оплаты (из .env)
 PAYMENT_DETAILS = {
     "blik": os.getenv("PAYMENT_BLIK", "Номер телефона: +48 123 456 789"),
-    "uah": os.getenv("PAYMENT_UAH", "ПриватБанк: 5168 7456 1234 5678\nПолучатель: Ivanov Ivan"),
+    "uah": os.getenv(
+        "PAYMENT_UAH", "ПриватБанк: 5168 7456 1234 5678\nПолучатель: Ivanov Ivan"
+    ),
     "usdt": os.getenv("PAYMENT_USDT", "TRC20: TXYZ... (кошелек)"),
 }
 

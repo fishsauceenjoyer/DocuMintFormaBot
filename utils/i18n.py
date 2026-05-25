@@ -57,7 +57,8 @@ class I18n:
                 try:
                     with open(filepath, "r", encoding="utf-8") as f:
                         self.locales[lang_code] = json.load(f)
-                    logger.info(f"Loaded locale: {lang_code} ({len(self.locales[lang_code])} keys)")
+                    keys_count = len(self.locales[lang_code])
+                    logger.info(f"Loaded locale: {lang_code} ({keys_count} keys)")
                 except Exception as e:
                     logger.error(f"Error loading locale {filename}: {e}")
 
@@ -86,7 +87,9 @@ class I18n:
             text = fallback.get(key)
 
         if text is None:
-            logger.warning(f"Translation key not found: '{key}' for language '{language}'")
+            logger.warning(
+                f"Translation key not found: '{key}' for language '{language}'"
+            )
             return f"[{key}]"
 
         if kwargs:

@@ -12,8 +12,7 @@ import enum
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime
-from sqlalchemy import Integer, String, Text
+from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -51,13 +50,13 @@ class OrderStatus(enum.Enum):
     Также возможна отмена (cancelled) на любом этапе.
     """
 
-    PENDING = "pending"        # Ожидает оплаты
-    PAID = "paid"              # Оплачен, ожидает обработки
+    PENDING = "pending"  # Ожидает оплаты
+    PAID = "paid"  # Оплачен, ожидает обработки
     PROCESSING = "processing"  # В обработке
-    READY = "ready"            # Готов к отправке
-    SHIPPED = "shipped"        # Отправлен (есть трек-номер)
-    COMPLETED = "completed"    # Выполнен
-    CANCELLED = "cancelled"    # Отменён
+    READY = "ready"  # Готов к отправке
+    SHIPPED = "shipped"  # Отправлен (есть трек-номер)
+    COMPLETED = "completed"  # Выполнен
+    CANCELLED = "cancelled"  # Отменён
 
 
 class User(Base):
@@ -185,4 +184,7 @@ class OrderItem(Base):
     data_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     def __repr__(self):
-        return f"<OrderItem(order_id={self.order_id}, type={self.document_type}, qty={self.quantity})>"
+        return (
+            f"<OrderItem(order_id={self.order_id}, "
+            f"type={self.document_type}, qty={self.quantity})>"
+        )

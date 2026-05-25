@@ -192,7 +192,11 @@ def cart_keyboard() -> InlineKeyboardMarkup:
                     text="➕ Добавить ещё документ", callback_data="cart_add_more"
                 )
             ],
-            [InlineKeyboardButton(text="🗑 Очистить корзину", callback_data="cart_clear")],
+            [
+                InlineKeyboardButton(
+                    text="🗑 Очистить корзину", callback_data="cart_clear"
+                )
+            ],
             [
                 InlineKeyboardButton(
                     text="🆘 Связь с менеджером", callback_data="help_manager"
