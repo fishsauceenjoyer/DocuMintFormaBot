@@ -14,12 +14,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from config import DATABASE_URL
 from db.models import Base, DocumentType, Order, OrderItem, User
 
-# Create engine - in production, use proper database URL
-engine = create_engine(
-    "sqlite:///bot.db", connect_args={"check_same_thread": False}, poolclass=StaticPool
-)
+engine_kwargs = {}
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs = {
+        "connect_args": {"check_same_thread": False},
+        "poolclass": StaticPool,
+    }
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 # Create tables
 Base.metadata.create_all(engine)
