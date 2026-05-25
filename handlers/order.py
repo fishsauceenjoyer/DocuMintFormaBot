@@ -541,12 +541,20 @@ async def process_payment_proof(message: Message, state: FSMContext):
 
     from utils.router import send_order_to_manager
 
-    await send_order_to_manager(
-        bot=message.bot,
-        order_data=order_data,
-        user_id=user_id,
-        payment_proof_file_id=file_id,
-    )
+    try:
+        await send_order_to_manager(
+            bot=message.bot,
+            order_data=order_data,
+            user_id=user_id,
+            payment_proof_file_id=file_id,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to send order to manager: {e}")
+        await message.answer(
+            f"✅ **Заказ #{order_id} создан, но не удалось отправить менеджеру.**\n\n"
+            f"Пожалуйста, свяжитесь с поддержкой."
+        )
 
     # Save order to database
     db = SessionLocal()

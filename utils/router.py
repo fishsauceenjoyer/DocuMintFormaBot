@@ -17,9 +17,47 @@ from templates.documents import get_template
 
 # Import admin's order storage to save user_id for later client notifications
 # This is a bridging fix; in production, use database
-from handlers.admin import orders
+from handlers.admin import _orders_lock, orders
 
 logger = logging.getLogger(__name__)
+
+
+async def _safe_send(
+    bot: Bot,
+    chat_id: int,
+    text: str,
+    parse_mode: Optional[str] = None,
+    photo: Optional[str] = None,
+) -> None:
+    """
+    Безопасная отправка сообщения/фото в Telegram чат.
+    Ловит все исключения и логирует их, не выбрасывая наружу.
+
+    Args:
+        bot: Экземпляр бота.
+        chat_id: ID чата получателя.
+        text: Текст сообщения.
+        parse_mode: Режим разметки (Markdown/HTML).
+        photo: file_id фото (если нужно отправить фото).
+    """
+    try:
+        if photo:
+            await bot.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption=text,
+                parse_mode=parse_mode,
+            )
+        else:
+            await bot.send_message(
+                chat_id=chat_id,
+                text=text,
+                parse_mode=parse_mode,
+            )
+    except Exception as e:
+        logger.warning(
+            f"Failed to send {'photo' if photo else 'message'} to {chat_id}: {e}"
+        )
 
 
 async def send_order_to_manager(
@@ -38,22 +76,12 @@ async def send_order_to_manager(
 
     Args:
         bot: Экземпляр бота для отправки сообщений.
-        order_data: Словарь с данными заказа:
-            - order_id: номер заказа
-            - documents: список заказанных документов
-            - delivery: данные доставки или None
-            - payment_method: способ оплаты
-            - total_price: итоговая сумма
-            - user: информация о пользователе
+        order_data: Словарь с данными заказа.
         user_id: ID пользователя Telegram.
         payment_proof_file_id: File_id фото/документа с чеком (если есть).
 
     Returns:
         ID чата, в который был отправлен заказ.
-
-    Note:
-        После текстового сообщения дополнительно отправляется
-        JSON-версия заказа для удобной пересылки.
     """
     # Определяем, какой тип документа основной (первый в списке)
     if not order_data.get("documents"):
@@ -98,39 +126,38 @@ async def send_order_to_manager(
     # Send with payment proof if available
     if payment_proof_file_id:
         text += "\n🖼 Доказательство оплаты: приложено ниже"
-        try:
-            await bot.send_photo(
-                chat_id=target,
-                photo=payment_proof_file_id,
-                caption=text,
-                parse_mode="Markdown",
-            )
-        except Exception as e:
-            logger.error(f"Error sending photo: {e}")
-            await bot.send_message(
-                chat_id=target,
-                text=text + "\n\n❌ Ошибка отправки фото",
-                parse_mode="Markdown",
-            )
+        await _safe_send(
+            bot=bot,
+            chat_id=target,
+            text=text,
+            parse_mode="Markdown",
+            photo=payment_proof_file_id,
+        )
     else:
-        await bot.send_message(chat_id=target, text=text, parse_mode="Markdown")
+        await _safe_send(
+            bot=bot, chat_id=target, text=text, parse_mode="Markdown"
+        )
 
     # Send JSON for easy forwarding
     json_data = json.dumps(order_data, ensure_ascii=False, indent=2)
-    await bot.send_message(
-        chat_id=target, text=f"```json\n{json_data}\n```", parse_mode="Markdown"
+    await _safe_send(
+        bot=bot,
+        chat_id=target,
+        text=f"```json\n{json_data}\n```",
+        parse_mode="Markdown",
     )
 
     # Save order info (including user_id for admin lookup) to the orders dict
     # This enables admin to send documents/tracking back to the correct client
-    orders[order_data["order_id"]] = {
-        "status": "new",
-        "user_id": user_id,
-        "username": order_data.get("user", {}).get("username", "unknown"),
-        "total_price": order_data.get("total_price", 0),
-    }
+    with _orders_lock:
+        orders[order_data["order_id"]] = {
+            "status": "new",
+            "user_id": user_id,
+            "username": order_data.get("user", {}).get("username", "unknown"),
+            "total_price": order_data.get("total_price", 0),
+        }
 
-    logger.info(f"Order {order_data['order_id']} sent to {target}")
+    logger.info(f"Order {order_data['order_id']} processed (target: {target})")
     return target
 
 
@@ -139,9 +166,6 @@ async def send_tracking_to_client(
 ) -> None:
     """
     Отправляет клиенту уведомление с трек-номером для отслеживания посылки.
-
-    Уведомляет клиента, что заказ готов и отправлен, и что посылку
-    можно забрать в пачкомате в течение 2 дней.
 
     Args:
         bot: Экземпляр бота для отправки сообщения.
@@ -157,7 +181,9 @@ async def send_tracking_to_client(
         f"Спасибо за заказ! 👋"
     )
 
-    await bot.send_message(chat_id=client_id, text=text, parse_mode="Markdown")
+    await _safe_send(
+        bot=bot, chat_id=client_id, text=text, parse_mode="Markdown"
+    )
 
 
 async def send_document_to_client(
@@ -169,9 +195,6 @@ async def send_document_to_client(
 ) -> None:
     """
     Отправляет клиенту готовый файл документа с уведомлением.
-
-    Если указан трек-номер — добавляет информацию об отслеживании.
-    В случае ошибки отправки файла отправляет только текстовое сообщение.
 
     Args:
         bot: Экземпляр бота для отправки файла.
@@ -194,7 +217,9 @@ async def send_document_to_client(
         )
     except Exception as e:
         logger.error(f"Error sending document: {e}")
-        await bot.send_message(chat_id=client_id, text=text, parse_mode="Markdown")
+        await _safe_send(
+            bot=bot, chat_id=client_id, text=text, parse_mode="Markdown"
+        )
 
 
 async def forward_to_manager(
@@ -203,10 +228,6 @@ async def forward_to_manager(
     """
     Пересылает запрос помощи от пользователя менеджеру.
 
-    Вызывается при нажатии кнопки "Связь с менеджером".
-    Отправляет в служебный чат информацию о пользователе,
-    на каком этапе он находится и его последнее сообщение.
-
     Args:
         bot: Экземпляр бота для отправки сообщения.
         user_id: ID пользователя Telegram.
@@ -214,7 +235,6 @@ async def forward_to_manager(
         message_text: Текст последнего сообщения или причина запроса.
         current_step: Текущий шаг пользователя в процессе заказа.
     """
-    # Send to default manager chat
     target = ROUTING["default"]
 
     text = (
@@ -225,6 +245,8 @@ async def forward_to_manager(
         f"```\n{message_text}\n```"
     )
 
-    await bot.send_message(chat_id=target, text=text, parse_mode="Markdown")
+    await _safe_send(
+        bot=bot, chat_id=target, text=text, parse_mode="Markdown"
+    )
 
     logger.info(f"Help request from user {user_id} forwarded to manager")
