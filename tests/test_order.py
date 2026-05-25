@@ -17,6 +17,7 @@ from fsm.states import OrderState
 
 # Import handlers early to avoid async fixture issues
 from handlers.order import (
+    callback_checkout,
     process_delivery_choice,
     process_document_choice,
     process_quantity,
@@ -126,3 +127,14 @@ async def test_callback_delivery_no(mock_fsm, clean_user_sessions):
 
     # Check that state is choosing_payment (skip to payment)
     assert mock_fsm._data.get("state") == OrderState.choosing_payment
+
+
+@pytest.mark.asyncio
+async def test_checkout_rejects_empty_cart(mock_fsm, clean_user_sessions):
+    callback = MockCallback(data="cart_checkout")
+
+    await callback_checkout(callback, mock_fsm)
+
+    assert callback._answered is True
+    assert "Корзина пуста" in callback._answered_text
+    assert mock_fsm._data.get("state") == OrderState.choosing_document

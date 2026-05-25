@@ -69,6 +69,7 @@ async def test_send_order_to_manager_routes_message_and_stores_admin_metadata(
     assert target == 111
     assert bot.photos[0]["chat_id"] == 111
     assert bot.photos[0]["photo"] == "proof-file-id"
+    assert bot.photos[0]["kwargs"]["reply_markup"] is not None
     assert bot.messages[0]["chat_id"] == 111
     assert "ORDER_TEST" in bot.messages[0]["text"]
     assert orders["ORDER_TEST"]["user_id"] == 123

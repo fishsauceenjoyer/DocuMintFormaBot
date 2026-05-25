@@ -171,6 +171,7 @@ def create_order(
     order_id: str,
     user_id: int,
     total_price: int,
+    status: str = "pending",
     payment_method: Optional[str] = None,
     payment_proof_file_id: Optional[str] = None,
     delivery: Optional[dict] = None,
@@ -187,6 +188,7 @@ def create_order(
         order_id: Уникальный номер заказа (ORDER_XXXXXXXX).
         user_id: ID пользователя в локальной БД.
         total_price: Итоговая сумма заказа в злотых.
+        status: Начальный статус заказа.
         payment_method: Способ оплаты (blik/uah/usdt).
         payment_proof_file_id: File_id фото/документа чека.
         delivery: Словарь с данными доставки (name, phone, email, paczkomat).
@@ -198,6 +200,7 @@ def create_order(
     order = Order(
         order_id=order_id,
         user_id=user_id,
+        status=status,
         total_price=total_price,
         payment_method=payment_method,
         payment_proof_file_id=payment_proof_file_id,
