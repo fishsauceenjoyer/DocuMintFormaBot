@@ -520,6 +520,14 @@ async def process_payment_proof(message: Message, state: FSMContext):
 
     user_id = message.from_user.id
     session = await get_user_session(user_id)
+    cart = session.get("cart", [])
+
+    if not cart:
+        await message.answer("❌ Корзина пуста. Начните заказ заново через /start.")
+        await state.clear()
+        async with _sessions_lock:
+            user_sessions.pop(user_id, None)
+        return
 
     file_id = None
     has_photo = False
@@ -575,14 +583,15 @@ async def process_payment_proof(message: Message, state: FSMContext):
             order_id=order_id,
             user_id=user_id,
             total_price=session.get("total_price", 0),
+            status="paid",
             payment_method=session.get("payment_method"),
             payment_proof_file_id=file_id,
             delivery=session.get("delivery"),
-            documents=session.get("cart", []),
+            documents=cart,
         )
 
         # Create order items
-        for cart_item in session.get("cart", []):
+        for cart_item in cart:
             price = get_template_price(cart_item["type"])
             create_order_item(
                 db=db,
@@ -686,6 +695,13 @@ async def callback_checkout(callback: CallbackQuery, state: FSMContext):
     """
     user_id = callback.from_user.id
     session = await get_user_session(user_id)
+    if not session.get("cart"):
+        await callback.answer(
+            "Корзина пуста. Добавьте документ перед оплатой.",
+            show_alert=True,
+        )
+        await state.set_state(OrderState.choosing_document)
+        return
 
     total = calculate_total_price(session)
     session["total_price"] = total
