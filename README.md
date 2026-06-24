@@ -166,6 +166,48 @@ business. It defines:
 
 ---
 
+## Manual testing (smoke test)
+
+After starting the bot, walk through this quick check list from a Telegram
+client to confirm everything works.
+
+### Happy path (new order)
+
+1. **Start** – send `/start` → you should see the main menu with 3 buttons
+2. **New order** – tap *"📋 New order"* → document list appears
+3. **Select document** – tap *"🗺 Visa application"* → quantity prompt with the
+   price in EUR (e.g. `35 €`)
+4. **Pick quantity** – tap `2` → field questionnaire starts
+5. **Fill fields** – answer each field (e.g. type "John Doe" for "Full name")
+   → after the last field the cart is updated and delivery choice appears
+6. **Delivery** – tap *"✅ Yes, delivery"* → enter delivery details
+7. **Payment** – tap *"💰 Proceed to payment"* → cart summary + payment options
+8. **Choose payment** – tap *"💳 Card"* → payment details + receipt request
+9. **Send fake receipt** – send any photo → you should see *"Order #… accepted!
+   Estimated processing time: 5–7 business days."*
+
+### Fast order
+
+1. From main menu tap *"👤 I'm a regular customer"* → intro text
+2. Type any message and send → you should see *"Your request has been sent to
+   the manager!"*
+
+### Language auto-detection
+
+Change your Telegram client language to **English**, **Russian**, or **Ukrainian**
+and repeat the happy path. The bot should use the matching locale.
+
+### Admin panel (optional)
+
+If you set `ADMIN_USERNAME` to your own Telegram handle in `.env`:
+- `/orders` – should list the order created above
+- `/stats` – should show order counts
+- `/help_admin` – admin command reference
+- `/send_doc ORDER_…` – send a document back (requires the order ID from
+  the manager notification chat)
+
+---
+
 ## For developers
 
 ```bash

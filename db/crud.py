@@ -200,7 +200,7 @@ def create_order(
         delivery_name=delivery.get("name") if delivery else None,
         delivery_phone=delivery.get("phone") if delivery else None,
         delivery_email=delivery.get("email") if delivery else None,
-        delivery_paczkomat=delivery.get("paczkomat") if delivery else None,
+        delivery_paczkomat=delivery.get("address") if delivery else None,
         documents_json=json.dumps(documents, ensure_ascii=False) if documents else None,
     )
     db.add(order)
@@ -391,41 +391,23 @@ def init_default_document_types(db: Session):
     """
     Инициализирует типы документов по умолчанию, если они ещё не созданы.
 
-    Добавляет стандартные типы (санэпид, BHP, психотесты, PESEL)
+    Добавляет стандартные типы из демо-конфига (консульские услуги)
     с базовыми ценами и настройками маршрутизации.
 
     Args:
         db: Сессия базы данных для добавления записей.
     """
+    from data.business_config import DOCUMENT_TEMPLATES, ROUTING_KEYS
+
     default_types = [
         {
-            "code": "sanepid",
-            "name_uk": "📑 Санэпід / СК",
-            "name_ru": "📑 Санэпид / СК",
-            "price": 150,
-            "target_chat_id": -100123456789,
-        },
-        {
-            "code": "bhp",
-            "name_uk": "⛑ BHP",
-            "name_ru": "⛑ BHP",
-            "price": 100,
-            "target_chat_id": -100987654321,
-        },
-        {
-            "code": "psychotests",
-            "name_uk": "🚕 Психотести для водіїв",
-            "name_ru": "🚕 Психотесты для водителей",
-            "price": 120,
-            "target_chat_id": 123456789,
-        },
-        {
-            "code": "pesel",
-            "name_uk": "🧧 PESEL без присутності",
-            "name_ru": "🧧 PESEL без присутствия",
-            "price": 200,
-            "target_chat_id": -100123456788,
-        },
+            "code": code,
+            "name_uk": tmpl.get("name_uk", tmpl["name_en"]),
+            "name_ru": tmpl.get("name_ru", tmpl["name_en"]),
+            "name_en": tmpl.get("name_en", tmpl["name_ru"]),
+            "price": tmpl["price_pln"],
+        }
+        for code, tmpl in DOCUMENT_TEMPLATES.items()
     ]
 
     for doc_type in default_types:
