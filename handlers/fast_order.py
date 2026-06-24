@@ -1,4 +1,8 @@
-"""Fast order handlers for regular clients (only Russian)."""
+"""Fast-order handlers for regular / repeat customers.
+
+This module provides a shortcut for known clients who can send their request
+in one free-form message, bypassing the step-by-step FSM.
+"""
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -7,32 +11,27 @@ from aiogram.types import CallbackQuery, InaccessibleMessage, Message
 
 from config import ROUTING
 from fsm.states import OrderState
+from utils.i18n import get_i18n, user_language
 
 router = Router()
 
 
 @router.callback_query(F.data == "fast_order")
 async def callback_fast_order(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает нажатие кнопки "Я постоянный клиент" (быстрый заказ).
+    """Handle "I'm a regular customer" button (fast order).
 
-    Запрашивает у пользователя логин или номер телефона для верификации.
-    После ввода данных заказ будет отправлен менеджеру без предоплаты.
-    Переводит пользователя в состояние ожидания ввода данных для быстрого заказа.
-
-    Args:
-        callback: CallbackQuery с data == "fast_order".
-        state: Контекст FSM для установки состояния fast_order_waiting.
+    Asks the user to enter their login or phone number for verification,
+    then forwards the request to the manager without pre-payment.
     """
     user = callback.from_user
-    user_id = user.id
+    if user is None:
+        await callback.answer()
+        return
 
-    text = (
-        "👤 **Я постоянный клиент**\n\n"
-        "Введите ваш логин или номер телефона, который вы используете "
-        "для постоянных заказов.\n\n"
-        "После верификации вы сможете отправить заказ одним сообщением."
-    )
+    user_id = user.id
+    lang = user_language(user)
+    i18n = get_i18n()
+    text = i18n.get("fast_order_intro", language=lang)
 
     if callback.message is not None and not isinstance(
         callback.message, InaccessibleMessage
@@ -47,25 +46,19 @@ async def callback_fast_order(callback: CallbackQuery, state: FSMContext):
             await bot.send_message(chat_id=user_id, text=text)
 
     await state.set_state(OrderState.fast_order_waiting)
-    await state.update_data(current_step="Верификация постоянного клиента")
+    await state.update_data(current_step="Fast order verification")
     await callback.answer()
 
 
 @router.message(OrderState.fast_order_waiting)
 async def process_fast_order(message: Message, state: FSMContext):
-    """
-    Обрабатывает сообщение с данными для быстрого заказа.
+    """Handle fast-order message from the user.
 
-    Пересылает полученные данные напрямую менеджеру без обработки
-    и без ожидания оплаты. Менеджер обрабатывает заказ вручную.
-
-    Args:
-        message: Текстовое сообщение с данными заказа от клиента.
-        state: Контекст FSM (очищается после отправки).
+    Forwards the raw message directly to the manager for manual processing.
     """
     user = message.from_user
     if user is None:
-        await message.answer("⚠️ Не удалось получить информацию о пользователе.")
+        await message.answer("⚠️ Could not get user information.")
         return
 
     user_id = user.id
@@ -73,53 +66,41 @@ async def process_fast_order(message: Message, state: FSMContext):
 
     bot = message.bot
     if bot is None:
-        await message.answer("⚠️ Ошибка бота. Попробуйте ещё раз.")
+        await message.answer("⚠️ Bot error. Please try again.")
         return
 
     text = (
-        f"⚡ **БЫСТРЫЙ ЗАКАЗ (Постоянный клиент)**\n\n"
-        f"👤 Клиент: @{user.username} (ID: {user_id})\n"
-        f"📝 Данные от клиента:\n\n"
+        f"⚡ **FAST ORDER (Repeat customer)**\n\n"
+        f"👤 Client: @{user.username} (ID: {user_id})\n"
+        f"📝 Client message:\n\n"
         f"```\n{message.text}\n```\n\n"
-        f"⚠️ Без оплаты - требует ручной проверки менеджером"
+        f"⚠️ Unpaid — requires manual check by manager"
     )
 
     await bot.send_message(chat_id=target, text=text, parse_mode="Markdown")
 
-    await message.answer(
-        "✅ **Ваш запрос отправлен менеджеру!**\n\n"
-        "📞 В ближайшее время он свяжется с вами для подтверждения заказа "
-        "и уточнения деталей оплаты.\n\n"
-        "Спасибо! 👋"
-    )
+    lang = user_language(user)
+    i18n = get_i18n()
+
+    await message.answer(i18n.get("fast_order_sent", language=lang))
 
     await state.clear()
 
 
 @router.message(Command("fast"))
 async def cmd_fast_order(message: Message, state: FSMContext):
-    """
-    Альтернативная команда /fast для оформления быстрого заказа.
+    """Alternative /fast command for fast order.
 
-    Показывает инструкцию: отправить одним сообщением все данные.
-    Менеджер свяжется с клиентом для подтверждения.
-
-    Args:
-        message: Сообщение от пользователя с командой /fast.
-        state: Контекст FSM для установки состояния fast_order_waiting.
+    Shows instructions and enters the fast-order waiting state.
     """
     user = message.from_user
     if user is None:
-        await message.answer("⚠️ Не удалось получить информацию о пользователе.")
+        await message.answer("⚠️ Could not get user information.")
         return
 
-    await message.answer(
-        "⚡ **Быстрый заказ**\n\n"
-        "Отправьте одним сообщением всё, что вам нужно:\n"
-        "- Какие документы\n"
-        "- Данные для каждого документа\n"
-        "- Доставка (если нужна)\n\n"
-        "Менеджер свяжется с вами для подтверждения."
-    )
+    lang = user_language(user)
+    i18n = get_i18n()
+
+    await message.answer(i18n.get("fast_order_cmd", language=lang))
     await state.set_state(OrderState.fast_order_waiting)
-    await state.update_data(current_step="Быстрый заказ")
+    await state.update_data(current_step="Fast order")

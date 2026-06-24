@@ -31,17 +31,17 @@ async def _safe_send(
     photo: Optional[str] = None,
     reply_markup: Optional[InlineKeyboardMarkup] = None,
 ) -> None:
-    """
-    Безопасная отправка сообщения/фото в Telegram чат.
-    Ловит все исключения и логирует их, не выбрасывая наружу.
+    """Safely send a message or photo to a Telegram chat.
+
+    Catches all exceptions and logs them without re-raising.
 
     Args:
-        bot: Экземпляр бота.
-        chat_id: ID чата получателя.
-        text: Текст сообщения.
-        parse_mode: Режим разметки (Markdown/HTML).
-        photo: file_id фото (если нужно отправить фото).
-        reply_markup: Inline-клавиатура для сообщения.
+        bot: Bot instance.
+        chat_id: Target chat ID.
+        text: Message text.
+        parse_mode: Parsing mode (Markdown / HTML).
+        photo: File ID of a photo (if sending a photo).
+        reply_markup: Inline keyboard markup.
     """
     try:
         if photo:
@@ -71,24 +71,21 @@ async def send_order_to_manager(
     user_id: int,
     payment_proof_file_id: Optional[str] = None,
 ) -> int:
-    """
-    Отправляет заказ нужному менеджеру в зависимости от типа документа.
+    """Send the order to the appropriate manager chat based on document type.
 
-    Определяет целевой чат по типу первого документа в заказе.
-    Формирует красивое сообщение с деталями заказа: состав документов,
-    данные доставки, сумму, способ оплаты. Если есть фото чека —
-    отправляет его с подписью.
+    Determines target chat by the first document's type.
+    Builds a readable message with order details: document list, delivery info,
+    total and payment method.
 
     Args:
-        bot: Экземпляр бота для отправки сообщений.
-        order_data: Словарь с данными заказа.
-        user_id: ID пользователя Telegram.
-        payment_proof_file_id: File_id фото/документа с чеком (если есть).
+        bot: Bot instance for sending messages.
+        order_data: Order payload dictionary.
+        user_id: Telegram user ID.
+        payment_proof_file_id: File ID of the payment proof image (if any).
 
     Returns:
-        ID чата, в который был отправлен заказ.
+        Chat ID that the order was sent to.
     """
-    # Определяем, какой тип документа основной (первый в списке)
     if not order_data.get("documents"):
         logger.error("No documents in order data")
         return ROUTING["default"]
@@ -96,16 +93,19 @@ async def send_order_to_manager(
     main_doc_type = order_data["documents"][0]["type"]
     target = ROUTING.get(main_doc_type, ROUTING["default"])
 
-    # Формируем красивое сообщение
-    text = f"🆕 **НОВЫЙ ЗАКАЗ #{order_data['order_id']}**\n"
-    text += f"👤 Клиент: {order_data['user'].get('username') or f'ID: {user_id}'}\n\n"
+    currency = order_data.get("currency", "EUR")
+
+    # Build readable message
+    text = f"🆕 **NEW ORDER #{order_data['order_id']}**\n"
+    text += f"👤 Client: {order_data['user'].get('username') or f'ID: {user_id}'}\n\n"
 
     for doc in order_data["documents"]:
         doc_type = doc["type"]
         template = get_template(doc_type)
-        doc_name = template["name"] if template else doc_type
+        doc_name = (template.get("name_en") or template.get("name_ru") or doc_type) \
+            if template else doc_type
 
-        text += f"📄 *{doc_name.upper()}* x{doc['quantity']}\n"
+        text += f"📄 *{doc_name}* x{doc['quantity']}\n"
 
         for idx, item in enumerate(doc.get("items", []), 1):
             text += f"  {idx}. "
@@ -117,21 +117,21 @@ async def send_order_to_manager(
     # Delivery info
     delivery = order_data.get("delivery")
     if delivery:
-        text += "🚚 **Доставка:**\n"
-        text += f"  Имя: {delivery.get('name', '-')}\n"
-        text += f"  Телефон: {delivery.get('phone', '-')}\n"
+        text += "🚚 **Delivery:**\n"
+        text += f"  Name: {delivery.get('name', '-')}\n"
+        text += f"  Phone: {delivery.get('phone', '-')}\n"
         text += f"  Email: {delivery.get('email', '-')}\n"
-        text += f"  Пачкомат: {delivery.get('paczkomat', '-')}\n\n"
+        text += f"  Address: {delivery.get('address', '-')}\n\n"
     else:
-        text += "🚚 Самовывоз (без доставки)\n\n"
+        text += "🚚 Pickup (no delivery)\n\n"
 
-    text += f"💰 **Сумма:** {order_data['total_price']} zł\n"
-    text += f"💳 **Оплата:** {order_data['payment_method']}\n"
+    text += f"💰 **Total:** {order_data['total_price']} {currency}\n"
+    text += f"💳 **Payment:** {order_data['payment_method']}\n"
 
     # Send with payment proof if available
     manager_keyboard = manager_order_keyboard(order_data["order_id"])
     if payment_proof_file_id:
-        text += "\n🖼 Доказательство оплаты: приложено ниже"
+        text += "\n🖼 Payment proof attached below"
         await _safe_send(
             bot=bot,
             chat_id=target,
@@ -159,7 +159,6 @@ async def send_order_to_manager(
     )
 
     # Save order info (including user_id for admin lookup) to the orders dict
-    # This enables admin to send documents/tracking back to the correct client
     with _orders_lock:
         orders[order_data["order_id"]] = {
             "status": "new",
@@ -175,21 +174,20 @@ async def send_order_to_manager(
 async def send_tracking_to_client(
     bot: Bot, client_id: int, order_id: str, tracking_number: str
 ) -> None:
-    """
-    Отправляет клиенту уведомление с трек-номером для отслеживания посылки.
+    """Send a tracking-number notification to the client.
 
     Args:
-        bot: Экземпляр бота для отправки сообщения.
-        client_id: ID чата клиента в Telegram.
-        order_id: Номер заказа.
-        tracking_number: Трек-номер для отслеживания.
+        bot: Bot instance.
+        client_id: Client's Telegram chat ID.
+        order_id: Order number.
+        tracking_number: Tracking number.
     """
     text = (
-        f"📦 **Ваш заказ готов!**\n\n"
-        f"📋 Номер заказа: {order_id}\n"
-        f"🔢 Трек-номер: `{tracking_number}`\n\n"
-        f"📮 Заберите посылку в пачкомате в течение 2 дней.\n\n"
-        f"Спасибо за заказ! 👋"
+        f"📦 **Your order is ready!**\n\n"
+        f"📋 Order number: {order_id}\n"
+        f"🔢 Tracking: `{tracking_number}`\n\n"
+        f"📮 Please pick up your package within 2 days.\n\n"
+        f"Thank you for your order! 👋"
     )
 
     await _safe_send(bot=bot, chat_id=client_id, text=text, parse_mode="Markdown")
@@ -202,23 +200,22 @@ async def send_document_to_client(
     file_id: str,
     tracking_number: Optional[str] = None,
 ) -> None:
-    """
-    Отправляет клиенту готовый файл документа с уведомлением.
+    """Send a completed document file to the client.
 
     Args:
-        bot: Экземпляр бота для отправки файла.
-        client_id: ID чата клиента в Telegram.
-        order_id: Номер заказа.
-        file_id: File_id готового документа в Telegram.
-        tracking_number: Опциональный трек-номер для отслеживания.
+        bot: Bot instance.
+        client_id: Client's Telegram chat ID.
+        order_id: Order number.
+        file_id: Telegram file ID of the completed document.
+        tracking_number: Optional tracking number.
     """
-    text = f"📄 **Ваш заказ #{order_id} готов!**\n\n"
+    text = f"📄 **Your order #{order_id} is ready!**\n\n"
 
     if tracking_number:
-        text += f"🔢 Трек-номер: `{tracking_number}`\n"
-        text += "📮 Заберите посылку в пачкомате в течение 2 дней.\n\n"
+        text += f"🔢 Tracking: `{tracking_number}`\n"
+        text += "Please pick up your package within 2 days.\n\n"
 
-    text += "Спасибо за заказ! 👋"
+    text += "Thank you for your order! 👋"
 
     try:
         await bot.send_document(
@@ -232,23 +229,22 @@ async def send_document_to_client(
 async def forward_to_manager(
     bot: Bot, user_id: int, username: str, message_text: str, current_step: str
 ) -> None:
-    """
-    Пересылает запрос помощи от пользователя менеджеру.
+    """Forward a help request from a user to the manager chat.
 
     Args:
-        bot: Экземпляр бота для отправки сообщения.
-        user_id: ID пользователя Telegram.
-        username: Username пользователя (или "unknown").
-        message_text: Текст последнего сообщения или причина запроса.
-        current_step: Текущий шаг пользователя в процессе заказа.
+        bot: Bot instance.
+        user_id: Telegram user ID.
+        username: Username (or "unknown").
+        message_text: Last message content or request reason.
+        current_step: User's current step in the order flow.
     """
     target = ROUTING["default"]
 
     text = (
-        f"🆘 **Клиент запросил помощь**\n\n"
-        f"👤 Клиент: @{username} (ID: {user_id})\n"
-        f"📍 Застрял на этапе: {current_step}\n\n"
-        f"💬 Последнее сообщение:\n"
+        f"🆘 **Client requested help**\n\n"
+        f"👤 Client: @{username} (ID: {user_id})\n"
+        f"📍 Stuck at: {current_step}\n\n"
+        f"💬 Last message:\n"
         f"```\n{message_text}\n```"
     )
 

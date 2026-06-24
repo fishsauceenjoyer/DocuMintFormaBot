@@ -1,4 +1,8 @@
-"""Start command and main menu handlers (only Russian)."""
+"""Start command and main menu handlers.
+
+Provides the /start landing, /menu command, new-order navigation,
+and the "Contact manager" button handler.
+"""
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -7,53 +11,44 @@ from aiogram.types import CallbackQuery, InaccessibleMessage, Message
 
 from fsm.states import OrderState
 from keyboards.buttons import main_menu_keyboard
+from utils.i18n import get_i18n, user_language
 
 router = Router()
 
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
-    """
-    Обрабатывает команду /start — начало работы с ботом.
+    """Handle /start — entry point of the bot.
 
-    Очищает предыдущее состояние пользователя (если он был в процессе заказа),
-    сразу показывает главное меню с доступными действиями.
-    Язык интерфейса — только русский.
-
-    Args:
-        message: Сообщение от пользователя с командой /start.
-        state: Контекст FSM, который очищается в начале обработки.
+    Clears any previous state and shows the main menu.
+    Language is auto-detected from the user's Telegram settings.
     """
     await state.clear()
-    await message.answer(
-        "👋 Добро пожаловать в бот оформления документов!\n\nВыберите действие:",
-        reply_markup=main_menu_keyboard(),
-    )
+
+    user = message.from_user
+    lang = user_language(user) if user else "en"
+    i18n = get_i18n()
+    text = i18n.get("welcome", language=lang)
+
+    await message.answer(text, reply_markup=main_menu_keyboard())
     await state.set_state(OrderState.choosing_document)
 
 
 @router.callback_query(F.data == "new_order")
 async def callback_new_order(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает нажатие кнопки "Новый заказ" в главном меню.
+    """Handle "New order" button in main menu.
 
-    Загружает список доступных шаблонов документов,
-    показывает их пользователю в виде инлайн-кнопок и переводит
-    в состояние выбора типа документа.
-
-    Args:
-        callback: CallbackQuery с data == "new_order".
-        state: Контекст FSM.
+    Shows the list of available document templates as inline buttons.
     """
     from keyboards.buttons import document_keyboard
     from templates.documents import get_all_templates
 
     docs = get_all_templates()
 
-    text = (
-        "📋 **Выберите документ для заказа:**\n\n"
-        "Также вы можете воспользоваться кнопкой 'Связь с менеджером'"
-    )
+    user = callback.from_user
+    lang = user_language(user) if user else "en"
+    i18n = get_i18n()
+    text = i18n.get("choose_document", language=lang)
 
     if callback.message is None or callback.bot is None:
         await callback.answer()
@@ -73,22 +68,19 @@ async def callback_new_order(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "help_manager")
 async def callback_help_manager(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает нажатие кнопки "Связь с менеджером".
+    """Handle "Contact manager" button.
 
-    Пересылает запрос пользователя менеджеру в служебный чат через
-    функцию forward_to_manager. Показывает пользователю уведомление
-    о том, что его запрос передан и менеджер скоро свяжется с ним.
-
-    Args:
-        callback: CallbackQuery с data == "help_manager".
-        state: Контекст FSM для определения текущего шага пользователя.
+    Forwards the user's help request to the manager's chat.
     """
     from utils.router import forward_to_manager
 
     user = callback.from_user
+    if user is None:
+        await callback.answer()
+        return
+
     data = await state.get_data()
-    current_step = data.get("current_step", "Главное меню")
+    current_step = data.get("current_step", "Main menu")
 
     if callback.bot is None:
         await callback.answer()
@@ -98,29 +90,30 @@ async def callback_help_manager(callback: CallbackQuery, state: FSMContext):
         bot=callback.bot,
         user_id=user.id,
         username=user.username or "unknown",
-        message_text="Нажал кнопку 'Связь с менеджером'",
+        message_text="Pressed 'Contact manager' button",
         current_step=current_step,
     )
 
+    lang = user_language(user)
+    i18n = get_i18n()
+
     await callback.answer(
-        "📞 Мы направили ваш запрос менеджеру.\n\nВ ближайшее время он свяжется с вами.",
+        i18n.get("help_sent", language=lang),
         show_alert=True,
     )
 
 
 @router.message(Command("menu"))
 async def cmd_menu(message: Message, state: FSMContext):
-    """
-    Обрабатывает команду /menu — возврат в главное меню.
+    """Handle /menu — return to the main menu.
 
-    Очищает состояние пользователя (сбрасывает текущий заказ)
-    и показывает главное меню с доступными действиями.
-
-    Args:
-        message: Сообщение от пользователя с командой /menu.
-        state: Контекст FSM, который очищается для сброса заказа.
+    Clears the current order state and shows the main menu.
     """
     await state.clear()
-    await message.answer(
-        "📋 Главное меню:\n\nВыберите действие:", reply_markup=main_menu_keyboard()
-    )
+
+    user = message.from_user
+    lang = user_language(user) if user else "en"
+    i18n = get_i18n()
+    text = i18n.get("menu", language=lang)
+
+    await message.answer(text, reply_markup=main_menu_keyboard())

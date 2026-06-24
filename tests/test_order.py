@@ -1,13 +1,12 @@
-"""
-Тесты для основного флоу заказа (order handlers).
+"""Tests for the main order flow (order handlers).
 
-Проверяет:
-    - Выбор типа документа
-    - Выбор количества
-    - Заполнение полей документа
-    - Выбор доставки
-    - Выбор способа оплаты
-    - Ожидание подтверждения оплаты
+Checks:
+    - Document type selection
+    - Quantity selection
+    - Document field filling
+    - Delivery choice
+    - Payment method selection
+    - Waiting for payment proof
 """
 
 import pytest
@@ -25,50 +24,51 @@ from handlers.order import (
 
 
 @pytest.mark.asyncio
-async def test_callback_document_choice_demo_category(mock_fsm, clean_user_sessions):
-    """
-    Тест: выбор документа "Санэпид" из списка доступных.
+async def test_callback_document_choice_demo_service(mock_fsm, clean_user_sessions):
+    """Test selecting a "demo_service application" document.
 
-    Проверяет:
-        - Текст сообщения содержит название шаблона
-        - Текст сообщения содержит цену
-        - Состояние FSM устанавливается в entering_quantity
+    Verifies:
+        - Message text contains the template name (English)
+        - Message text contains the price (EUR)
+        - FSM state is set to entering_quantity
     """
-    callback = MockCallback(data="doc_demo_category")
+    callback = MockCallback(data="doc_demo_service")
 
     await process_document_choice(callback, mock_fsm)
 
     # Verify message was edited with template info
     assert callback.message._edited_text is not None
-    assert "Санэпид" in callback.message._edited_text
-    assert "150" in callback.message._edited_text  # price
+    assert "demo_service application" in callback.message._edited_text
+    assert "35" in callback.message._edited_text  # price (EUR)
+    assert "€" in callback.message._edited_text
     # Verify state
     assert mock_fsm._data.get("state") == OrderState.entering_quantity
 
 
 @pytest.mark.asyncio
-async def test_callback_document_choice_bhp(mock_fsm, clean_user_sessions):
-    """
-    Тест: выбор документа "BHP" из списка доступных.
+async def test_callback_document_choice_demo_document(mock_fsm, clean_user_sessions):
+    """Test selecting a "Foreign demo_document" document.
 
-    Проверяет корректную загрузку другого типа документа.
+    Verifies correct loading of another document type.
     """
-    callback = MockCallback(data="doc_bhp")
+    callback = MockCallback(data="doc_demo_document")
 
     await process_document_choice(callback, mock_fsm)
 
     assert callback.message._edited_text is not None
-    assert "BHP" in callback.message._edited_text
-    assert "100" in callback.message._edited_text  # BHP price
+    # The English name is "Foreign demo_document"
+    assert "Foreign demo_document" in callback.message._edited_text
+    # demo_document price is 45 EUR
+    assert "45" in callback.message._edited_text
+    assert "€" in callback.message._edited_text
     assert mock_fsm._data.get("state") == OrderState.entering_quantity
 
 
 @pytest.mark.asyncio
 async def test_callback_document_choice_invalid(mock_fsm, clean_user_sessions):
-    """
-    Тест: выбор несуществующего документа.
+    """Test selecting a nonexistent document.
 
-    Проверяет, что при неверном типе документа вызывается answer с ошибкой.
+    Verifies that an invalid document type triggers an error answer.
     """
     callback = MockCallback(data="doc_nonexistent")
 
@@ -80,15 +80,14 @@ async def test_callback_document_choice_invalid(mock_fsm, clean_user_sessions):
 
 @pytest.mark.asyncio
 async def test_callback_quantity_selection(mock_fsm, clean_user_sessions):
-    """
-    Тест: выбор количества документов (3 экземпляра).
+    """Test quantity selection (3 copies).
 
-    Проверяет:
-        - Состояние FSM устанавливается в filling_document
-        - Сессия пользователя обновляется
+    Verifies:
+        - FSM state transitions to filling_document
+        - User session is updated
     """
     # First make a document choice to set up the session
-    callback = MockCallback(data="doc_demo_category")
+    callback = MockCallback(data="doc_demo_service")
     await process_document_choice(callback, mock_fsm)
 
     # Now select quantity (need a new callback since frozen model)
@@ -101,10 +100,9 @@ async def test_callback_quantity_selection(mock_fsm, clean_user_sessions):
 
 @pytest.mark.asyncio
 async def test_callback_delivery_yes(mock_fsm, clean_user_sessions):
-    """
-    Тест: выбор доставки "Нужна доставка".
+    """Test choosing "Delivery needed".
 
-    Проверяет, что состояние FSM устанавливается в filling_delivery.
+    Verifies that FSM state transitions to filling_delivery.
     """
     callback = MockCallback(data="delivery_yes")
 
@@ -116,10 +114,9 @@ async def test_callback_delivery_yes(mock_fsm, clean_user_sessions):
 
 @pytest.mark.asyncio
 async def test_callback_delivery_no(mock_fsm, clean_user_sessions):
-    """
-    Тест: выбор "Самовывоз (без доставки)".
+    """Test choosing "Pickup (no delivery)".
 
-    Проверяет, что состояние FSM устанавливается в choosing_payment.
+    Verifies that FSM state transitions to choosing_payment.
     """
     callback = MockCallback(data="delivery_no")
 
@@ -136,5 +133,5 @@ async def test_checkout_rejects_empty_cart(mock_fsm, clean_user_sessions):
     await callback_checkout(callback, mock_fsm)
 
     assert callback._answered is True
-    assert "Корзина пуста" in callback._answered_text
+    assert "Cart is empty" in callback._answered_text
     assert mock_fsm._data.get("state") == OrderState.choosing_document

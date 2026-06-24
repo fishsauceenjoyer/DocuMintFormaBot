@@ -15,29 +15,33 @@ services:
     volumes:
       # Mount .env file for configuration
       - ./.env:/app/.env:ro
-      # Persist SQLite database between restarts
+      # Persist SQLite database between restarts (локальная разработка)
       - ./data:/app/data
-      # Mount bot.db from data directory
     environment:
+      # Локально используем SQLite (переопределяется на PostgreSQL через .env при деплое)
       - DATABASE_URL=sqlite:///data/bot.db
-    # Uncomment for Redis support:
+    # Для локального тестирования с PostgreSQL — раскомментировать:
     # depends_on:
-    #   - redis
+    #   - postgres
 
-  # Uncomment for production Redis storage:
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: tg-bot-redis
+  # PostgreSQL for local development (опционально)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: tg-bot-postgres
   #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: bot
+  #     POSTGRES_PASSWORD: bot_password
+  #     POSTGRES_DB: documint_bot
   #   ports:
-  #     - "6379:6379"
+  #     - "5432:5432"
   #   volumes:
-  #     - redis_data:/data
+  #     - postgres_data:/var/lib/postgresql/data
   #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
+  #     test: ["CMD-SHELL", "pg_isready -U bot -d documint_bot"]
   #     interval: 10s
   #     timeout: 5s
   #     retries: 5
 
-# volumes:
-#   redis_data:
+volumes:
+  postgres_data:

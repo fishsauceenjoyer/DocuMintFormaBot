@@ -1,14 +1,9 @@
 """
-Интернационализация (i18n) для Telegram-бота.
+Internationalisation (i18n) for the Telegram bot.
 
-Загружает переводы из JSON-файлов в папке locales/.
-Предоставляет простой API для получения текста на нужном языке.
-
-Использование:
-    i18n = I18n()
-    welcome_text = i18n.get("welcome", language="uk")
-    # или с подстановками:
-    text = i18n.get("order_created", language="uk", order_id="ORDER_123")
+Loads translations from JSON files in the locales/ folder.
+Provides a simple API to retrieve strings by key and language,
+and a helper to determine a user's language from their Telegram settings.
 """
 
 import json
@@ -16,36 +11,57 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
+from aiogram.types import User
+
 logger = logging.getLogger(__name__)
 
 # Default locale directory
 LOCALES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "locales")
 
+# Supported language codes — used to map Telegram language_code → our keys
+SUPPORTED_LANGUAGES = {"ru", "uk", "en"}
+DEFAULT_LANGUAGE = "en"
+
+
+def user_language(user: User) -> str:
+    """Determine the bot interface language from a Telegram user object.
+
+    Inspects ``user.language_code`` (e.g. "ru", "uk", "en", "be", "pl") and maps
+    it to one of the supported languages. Falls back to *en* for unsupported codes.
+    """
+    if user.language_code and user.language_code in SUPPORTED_LANGUAGES:
+        return user.language_code
+    # Map Belarusian → Russian, Polish → English, etc.
+    # Only handle direct matches; everything else → default
+    if user.language_code and user.language_code.startswith("ru"):
+        return "ru"
+    if user.language_code and user.language_code.startswith("uk"):
+        return "uk"
+    return DEFAULT_LANGUAGE
+
 
 class I18n:
-    """
-    Менеджер переводов для многоязычного интерфейса бота.
+    """Translation manager for the bot's multilingual interface.
 
-    Загружает JSON-файлы локализации из папки locales/ и предоставляет
-    метод get() для получения текста по ключу и языку.
+    Loads JSON locale files from the *locales/* directory and provides
+    :meth:`get` to retrieve a translated string by key and language.
 
-    Атрибуты:
-        locales: Словарь {language_code: {key: text}}
+    Attributes:
+        locales: Dictionary ``{language_code: {key: translated_text}}``.
     """
 
     def __init__(self, locales_dir: str = LOCALES_DIR) -> None:
-        """
-        Инициализирует I18n, загружая все доступные переводы.
+        """Initialise I18n, loading all available translations.
 
         Args:
-            locales_dir: Путь к папке с JSON-файлами локализации.
+            locales_dir: Path to the folder containing JSON locale files.
         """
         self.locales_dir = locales_dir
         self.locales: Dict[str, Dict[str, str]] = {}
         self._load_locales()
 
     def _load_locales(self) -> None:
-        """Загружает все JSON-файлы локализации из папки locales/."""
+        """Load all JSON locale files from the locales directory."""
         if not os.path.exists(self.locales_dir):
             logger.warning(f"Locales directory not found: {self.locales_dir}")
             return
@@ -62,28 +78,31 @@ class I18n:
                 except Exception as e:
                     logger.error(f"Error loading locale {filename}: {e}")
 
-    def get(self, key: str, language: str = "ru", **kwargs: Any) -> str:
-        """
-        Возвращает переведённую строку по ключу и языку.
+    def get(self, key: str, language: str = DEFAULT_LANGUAGE, **kwargs: Any) -> str:
+        """Return a translated string by key and language.
 
-        Если перевод не найден, возвращает ключ в квадратных скобках.
-        Если указаны kwargs — делает подстановку через .format().
+        Resolution order:
+            1. Exact language.
+            2. Fallback to ``DEFAULT_LANGUAGE`` (English).
+            3. Return ``[key]`` if nothing matches.
+
+        If *kwargs* are supplied, they are substituted via ``.format()``.
 
         Args:
-            key: Ключ перевода (например, "welcome", "order_created").
-            language: Код языка ("ru", "uk").
-            **kwargs: Параметры для подстановки в текст.
+            key: Translation key (e.g. ``"welcome"``, ``"order_accepted"``).
+            language: Language code (``"ru"``, ``"uk"``, ``"en"``).
+            **kwargs: Parameters to substitute into the text.
 
         Returns:
-            Переведённая строка или ключ в скобках, если перевод не найден.
+            Translated string, or ``[key]`` if not found.
         """
-        # Try exact language first, fall back to "ru", then return key
+        # Try exact language first
         translations = self.locales.get(language, {})
         text = translations.get(key)
 
         if text is None:
-            # Fallback to Russian
-            fallback = self.locales.get("ru", {})
+            # Fallback to English
+            fallback = self.locales.get(DEFAULT_LANGUAGE, {})
             text = fallback.get(key)
 
         if text is None:
@@ -102,11 +121,10 @@ class I18n:
         return text
 
     def get_available_languages(self) -> list:
-        """
-        Возвращает список доступных кодов языков.
+        """Return the list of available language codes.
 
         Returns:
-            Список строк с кодами языков (например, ["ru", "uk"]).
+            List of language code strings (e.g. ``["en", "ru", "uk"]``).
         """
         return list(self.locales.keys())
 
@@ -116,11 +134,10 @@ _i18n: Optional[I18n] = None
 
 
 def get_i18n() -> I18n:
-    """
-    Возвращает глобальный экземпляр I18n (создаёт при первом вызове).
+    """Return the global I18n singleton (created on first call).
 
     Returns:
-        Экземпляр I18n с загруженными переводами.
+        I18n instance with loaded translations.
     """
     global _i18n
     if _i18n is None:

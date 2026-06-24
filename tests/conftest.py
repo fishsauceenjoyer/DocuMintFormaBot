@@ -148,7 +148,7 @@ def mock_fsm():
 @pytest.fixture
 def mock_callback():
     """Фикстура: мок-объект callback с доступным сообщением."""
-    return MockCallback(data="doc_demo_category", message_accessible=True)
+    return MockCallback(data="doc_demo_service", message_accessible=True)
 
 
 @pytest.fixture
