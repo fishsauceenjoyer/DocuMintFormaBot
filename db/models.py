@@ -1,11 +1,10 @@
-"""
-Модели базы данных (SQLAlchemy) для Telegram-бота.
+"""SQLAlchemy database models for the Telegram bot.
 
-Содержит описание таблиц и связей между ними:
-    - User — пользователи бота
-    - DocumentType — типы документов с ценами и настройками маршрутизации
-    - Order — заказы с информацией о доставке и оплате
-    - OrderItem — отдельные позиции внутри заказа
+Contains table and relationship definitions:
+    - User — bot users
+    - DocumentType — document types with prices and routing configuration
+    - Order — orders with delivery and payment info
+    - OrderItem — individual line items within an order
 """
 
 import enum
@@ -17,24 +16,21 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
-    """
-    Базовый класс для всех моделей SQLAlchemy.
+    """Base class for all SQLAlchemy models.
 
-    Все модели наследуются от этого класса для единой настройки
-    метаданных и конфигурации таблиц.
+    All models inherit from this class for unified metadata and table configuration.
     """
 
     pass
 
 
 class UserRole(enum.Enum):
-    """
-    Роли пользователей в системе.
+    """User roles within the system.
 
-    Возможные значения:
-        - USER: обычный пользователь (клиент)
-        - MANAGER: менеджер, работающий с заказами
-        - ADMIN: администратор с полным доступом
+    Possible values:
+        - USER: regular customer
+        - MANAGER: staff member working with orders
+        - ADMIN: full-access administrator
     """
 
     USER = "user"
@@ -43,31 +39,29 @@ class UserRole(enum.Enum):
 
 
 class OrderStatus(enum.Enum):
-    """
-    Статусы заказа в процессе обработки.
+    """Order statuses throughout processing.
 
-    Последовательность: pending → paid → processing → ready → shipped → completed
-    Также возможна отмена (cancelled) на любом этапе.
+    Sequence: pending → paid → processing → ready → shipped → completed.
+    Orders can also be cancelled at any stage.
     """
 
-    PENDING = "pending"  # Ожидает оплаты
-    PAID = "paid"  # Оплачен, ожидает обработки
-    PROCESSING = "processing"  # В обработке
-    READY = "ready"  # Готов к отправке
-    SHIPPED = "shipped"  # Отправлен (есть трек-номер)
-    COMPLETED = "completed"  # Выполнен
-    CANCELLED = "cancelled"  # Отменён
+    PENDING = "pending"
+    PAID = "paid"
+    PROCESSING = "processing"
+    READY = "ready"
+    SHIPPED = "shipped"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
 
 
 class User(Base):
-    """
-    Модель пользователя бота.
+    """Bot user model.
 
-    Хранит информацию о пользователе Telegram: username, chat_id,
-    номер телефона, роль и выбранный язык интерфейса.
+    Stores Telegram user information: username, chat_id,
+    phone number, role, and interface language.
 
-    Связи:
-        - Заказы пользователя доступны через Order.user_id
+    Relationships:
+        - Orders are linked through Order.user_id.
     """
 
     __tablename__ = "users"
@@ -77,7 +71,7 @@ class User(Base):
     chat_id: Mapped[int] = mapped_column(Integer, nullable=True)
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="user")
-    language: Mapped[str] = mapped_column(String(10), default="uk")
+    language: Mapped[str] = mapped_column(String(10), default="en")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -88,18 +82,18 @@ class User(Base):
 
 
 class DocumentType(Base):
-    """
-    Модель типа документа (шаблон).
+    """Document type / template model.
 
-    Определяет название, цену и настройки маршрутизации для каждого
-    типа документа (санэпид, BHP, психотесты, PESEL).
+    Defines the name, price and routing configuration for each
+    document category. The *code* field matches the routing keys
+    used in :mod:`data.business_config`.
 
-    Свойства:
-        - code: уникальный код типа (sanepid, bhp, psychotests, pesel)
-        - name_uk / name_ru: название на украинском и русском
-        - price: стоимость единицы в злотых
-        - target_chat_id: ID чата менеджера для данного типа
-        - is_active: активен ли тип (можно ли заказать)
+    Attributes:
+        code: Unique type code (e.g. ``"visa"``, ``"passport"``).
+        name_uk / name_ru / name_en: Display names.
+        price: Unit price in PLN.
+        target_chat_id: Manager chat ID for this document type.
+        is_active: Whether the type is available for ordering.
     """
 
     __tablename__ = "document_types"
@@ -108,6 +102,7 @@ class DocumentType(Base):
     code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     name_uk: Mapped[str] = mapped_column(String(255), nullable=False)
     name_ru: Mapped[str] = mapped_column(String(255), nullable=False)
+    name_en: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     price: Mapped[int] = mapped_column(Integer, default=0)
     description_uk: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     description_ru: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -120,18 +115,16 @@ class DocumentType(Base):
 
 
 class Order(Base):
-    """
-    Модель заказа.
+    """Order model.
 
-    Хранит полную информацию о заказе: номер, статус, сумму,
-    способ оплаты, данные доставки, трек-номер и содержимое
-    заказа в JSON-формате.
+    Stores full order information: ID, status, total price,
+    payment method, delivery data, tracking number, and the
+    order contents as JSON.
 
-    Свойства:
-        - order_id: уникальный номер заказа (ORDER_XXXXXXXX)
-        - status: текущий статус (см. OrderStatus)
-        - documents_json: JSON с деталями заказа (типы, поля, количество)
-        - delivery_*: данные для доставки InPost
+    Attributes:
+        order_id: Unique order number (``ORDER_YYYYMMDD_XXXX``).
+        status: Current status (see :class:`OrderStatus`).
+        documents_json: JSON with order details (types, fields, quantities).
     """
 
     __tablename__ = "orders"
@@ -163,15 +156,14 @@ class Order(Base):
 
 
 class OrderItem(Base):
-    """
-    Модель позиции в заказе — отдельный документ с его параметрами.
+    """Line item inside an order — a single document with parameters.
 
-    Хранит тип документа, количество, цену за единицу и
-    JSON-данные с заполненными полями для каждого экземпляра.
+    Stores the document type, quantity, unit price and
+    JSON data with filled-in fields for each instance.
 
-    Связи:
-        - Привязана к заказу через order_id
-        - Тип документа ссылается на DocumentType.code
+    Relationships:
+        - Linked to an order via *order_id*.
+        - Document type references :class:`DocumentType.code`.
     """
 
     __tablename__ = "order_items"

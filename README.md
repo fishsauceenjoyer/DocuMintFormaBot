@@ -1,160 +1,200 @@
-# 🤖 DocuMintFormaBot
+# 🗺 DocuMint 🛂
 
-Telegram-бот для автоматизации приёма заказов на оформление документов (Санэпид/СК, BHP, PESEL, психотесты и др.).
+**Demo Telegram bot for document ordering services** — a showcase project that
+illustrates a complete order-processing FSM (Finite State Machine) with
+multi-language support, inline keyboards, cart management, delivery/payment
+options, and a manager/admin panel.
 
-## Возможности
+> 🔍 This is a **demo** project. The business logic (document types, prices,
+> routing keys) lives in a single config file — drop in your own data to
+> repurpose the bot for any document-as-a-service scenario.
 
-- 📋 Выбор типа документа из списка шаблонов с ценами
-- 📝 Динамический опросник полей для каждого документа
-- 🛒 Корзина с добавлением нескольких документов в один заказ
-- 🚚 Доставка InPost (данные для пачкомата)
-- 💳 Выбор способа оплаты (Blik, Гривна, USDT)
-- 📤 Автоматическая отправка заказов менеджерам (маршрутизация по типу документа)
-- ⚡ Режим "Постоянный клиент" для быстрых заказов
-- 🆘 Кнопка "Связь с менеджером"
-- 📦 Отправка трек-номера и готовых документов клиентам
-- 📊 Статистика заказов для администратора
-- 🐳 Полная Docker-поддержка
+---
 
-## Структура проекта
+## Features
+
+- 🌍 **Multi-language** — English, Russian, Ukrainian (auto-detected from
+  Telegram settings, falls back to English)
+- 📋 **Document catalogue** — choose from visa applications, passports,
+  criminal record checks, apostille, etc.
+- 📝 **Dynamic field questionnaire** — each document type defines its own set
+  of input fields
+- 🛒 **Cart** — add multiple documents of different types in a single order
+- 🚚 **Delivery / pickup** — enter courier address or choose self-pickup
+- 💳 **Payment methods** — configurable (demo: bank transfer, crypto, online)
+- 📤 **Order routing** — each document type can be forwarded to a different
+  manager chat
+- ⚡ **Fast order** — regular customers can send a free-form message bypassing
+  the step-by-step wizard
+- 🆘 **Contact manager** — help button forwards user info to support
+- 📦 **Manager panel** — send ready documents and tracking numbers back to clients
+- 📊 **Stats** — `/orders`, `/stats` for the admin
+- 🐳 **Docker-ready** — multi-stage build + `docker-compose.yml`
+
+---
+
+## Project structure
 
 ```
 documintformabot/
-├── main.py                 # Точка входа
-├── config.py               # Конфигурация (токен, ID чатов, реквизиты)
+├── main.py                  # Entry point
+├── config.py                # Runtime config (token, routing, DB)
+├── data/
+│   └── business_config.py   # 📌 Business data: document types, prices,
+│                            #    fields, payment details, routing keys
 ├── db/
-│   ├── models.py           # SQLAlchemy модели (User, Order, DocumentType, OrderItem)
-│   └── crud.py             # CRUD-операции для работы с БД
+│   ├── models.py            # SQLAlchemy models (User, Order, …)
+│   └── crud.py              # CRUD operations
 ├── fsm/
-│   └── states.py           # Состояния FSM (конечный автомат)
+│   └── states.py            # FSM states
 ├── handlers/
-│   ├── start.py            # Команда /start, главное меню
-│   ├── order.py            # Основной поток заказа
-│   ├── fast_order.py       # Быстрый заказ для постоянных клиентов
-│   └── admin.py            # Админ-панель (/orders, /stats, /send_doc, /track)
+│   ├── start.py             # /start, main menu
+│   ├── order.py             # Main order FSM flow
+│   ├── fast_order.py        # Fast order for repeat customers
+│   └── admin.py             # Manager panel
 ├── templates/
-│   └── documents.py        # Шаблоны документов (поля, цены)
+│   ├── fields.py            # Field class
+│   └── documents.py         # Thin wrapper over data/business_config.py
 ├── utils/
-│   ├── auth.py             # Декораторы для проверки прав администратора
-│   ├── i18n.py             # Интернационализация (ru/uk)
-│   ├── middleware.py       # Middleware (логирование, регистрация пользователей)
-│   └── router.py           # Маршрутизация заказов менеджерам
+│   ├── auth.py              # Admin-only decorator
+│   ├── i18n.py              # i18n manager + user_language() helper
+│   ├── middleware.py         # Logging / user registration middleware
+│   └── router.py             # Order routing to manager chats
 ├── keyboards/
-│   └── buttons.py          # Inline-клавиатуры
+│   └── buttons.py           # Inline keyboards
 ├── locales/
-│   ├── ru.json             # Русская локализация
-│   └── uk.json             # Украинская локализация
-├── tests/
-│   ├── conftest.py         # Фикстуры для тестов
-│   ├── test_order.py       # Тесты заказов
-│   └── test_fast_order.py  # Тесты быстрых заказов
-├── Dockerfile              # Multi-stage Docker-сборка
-├── docker-compose.yml      # Docker Compose (бот + опционально Redis)
-└── .env.example            # Пример конфигурации
+│   ├── en.json              # English translations
+│   ├── ru.json              # Russian translations
+│   └── uk.json              # Ukrainian translations
+├── tests/                   # Pytest unit tests
+├── Dockerfile               # Multi-stage build
+├── docker-compose.yml       # Bot + optional Redis
+└── .env.example             # Environment variable template
 ```
 
-## Быстрый старт
+---
 
-### Локально (без Docker)
+## Quick start
+
+### Locally
 
 ```bash
-# 1. Клонировать репозиторий
+# 1. Clone
 git clone <repo-url> documintformabot
 cd documintformabot
 
-# 2. Создать виртуальное окружение и установить зависимости
+# 2. Virtual env + deps
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # venv\Scripts\activate   # Windows
 pip install -r requirements.txt
 
-# 3. Настроить .env
+# 3. Configure .env
 cp .env.example .env
-# Отредактировать .env: вставить BOT_TOKEN и ADMIN_USERNAME
+# Edit .env: insert BOT_TOKEN and ADMIN_USERNAME
 
-# 4. Запустить
+# 4. Run
 python main.py
 ```
 
-### В Docker (рекомендуется)
+### Docker (recommended)
 
 ```bash
-# 1. Настроить .env (скопировать из .env.example и отредактировать)
 cp .env.example .env
+# Edit .env
 
-# 2. Собрать и запустить
 docker compose up --build -d
-
-# 3. Посмотреть логи
 docker compose logs -f
-
-# 4. Остановить
 docker compose down
 ```
 
-## Настройка .env
+---
+
+## Configuration
+
+### `.env`
 
 ```env
-# Обязательные параметры
-BOT_TOKEN=your_bot_token_here       # Токен от @BotFather
-ADMIN_USERNAME=your_admin_username  # Telegram username администратора
+# REQUIRED
+BOT_TOKEN=your_bot_token_here
+ADMIN_USERNAME=your_admin_username
 
-# Маршрутизация заказов по чатам менеджеров
-ROUTING_SANEPID=-100123456789       # Чат для Санэпид/СК
-ROUTING_BHP=-100987654321           # Чат для BHP
-ROUTING_PSYCHOTESTS=123456789       # Чат для психотестов
-ROUTING_PESEL=-100123456788         # Чат для PESEL
-ROUTING_DEFAULT=555555555           # Чат по умолчанию
+# Routing — chat IDs for each document type
+ROUTING_VISA=-100123456789
+ROUTING_PASSPORT=-100987654321
+ROUTING_CRIMINAL_RECORD=123456789
+ROUTING_APOSTILLE=-100123456788
+ROUTING_DEFAULT=555555555
 
-# Платёжные реквизиты
-PAYMENT_BLIK="Номер телефона: +48 XXX XXX XXX"
-PAYMENT_UAH="ПриватБанк: 5168 XXXX XXXX XXXX"
-PAYMENT_USDT="TRC20: адрес кошелька"
-
-# База данных (SQLite для разработки, PostgreSQL для продакшена)
+# Database (SQLite for dev, PostgreSQL for production)
 DATABASE_URL=sqlite:///bot.db
-
-# Redis (опционально — для production)
-# REDIS_URL=redis://localhost:6379/0
 ```
 
-## Цены на документы
+### `data/business_config.py`
 
-| Документ | Цена |
-|----------|------|
-| 📑 Санэпид / СК | 150 zł |
-| ⛑ BHP | 100 zł |
-| 🚕 Психотесты для водителей | 120 zł |
-| 🧧 PESEL без присутствия | 200 zł |
-| 🚚 Доставка InPost | +20 zł |
+This is **the only file you need to edit** to customise the bot for your own
+business. It defines:
 
-## Команды для администратора
+| Item               | Description                                  |
+|--------------------|----------------------------------------------|
+| `DOCUMENT_TEMPLATES` | Document types, display names (RU/UK/EN), fields, prices (PLN & EUR) |
+| `ROUTING_KEYS`       | Maps document codes → environment variable names |
+| `DELIVERY_PRICE_*`   | Delivery cost                                 |
+| `PAYMENT_DETAILS`    | Payment instructions shown to customers       |
 
-- `/send_doc ORDER_123ABC` — отправить готовый документ клиенту
-- `/track ORDER_123ABC TRACK123` — отправить трек-номер
-- `/orders` — список всех заказов
-- `/stats` — статистика заказов
-- `/help_admin` — справка по командам
+### Prices (demo)
 
-## Для разработчиков
+| Document                              | PLN  | EUR  |
+|---------------------------------------|------|------|
+| 🗺 Visa application                   | 150  | 35   |
+| 🛂 Foreign passport                   | 200  | 45   |
+| 📜 Criminal record check              | 100  | 25   |
+| 📑 Apostille                          | 120  | 30   |
+| 🚚 Delivery                           | +20  | +5   |
+
+---
+
+## Admin commands
+
+| Command                         | Description                        |
+|---------------------------------|------------------------------------|
+| `/send_doc ORDER_123ABC`        | Send a completed document          |
+| `/track ORDER_123ABC TRACK123`  | Send a tracking number             |
+| `/orders`                       | List all orders                    |
+| `/stats`                        | Order statistics                   |
+| `/help_admin`                   | Admin help                         |
+
+---
+
+## For developers
 
 ```bash
-# Форматирование
+# Format
 black .
 
-# Линтинг
+# Lint
 flake8 .
 
-# Проверка типов
+# Type checking
 mypy .
 
-# Запуск тестов
+# Tests
 pytest -v
-
-# Запуск тестов с coverage
 pytest --cov=. -v
 ```
 
-## Лицензия
+---
+
+## Deployment (Timeweb Cloud)
+
+1. Create a **PostgreSQL** database (free tier available).
+2. Create a **Cloud Apps** Docker container.
+3. Set environment variables (see `.env.example`).
+4. Set health-check port to **8080**.
+5. Deploy — auto-rebuilds on git push.
+
+---
+
+## License
 
 MIT

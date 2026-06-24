@@ -15,39 +15,55 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from config import DELIVERY_PRICE
+from config import DELIVERY_PRICE_PLN, DELIVERY_PRICE_EUR
 
 # Import DB functions (lazy — imported inside handlers to avoid circular imports)
 from db.crud import SessionLocal, create_order, create_order_item
 from db.models import Order
 from fsm.states import OrderState
 from keyboards.buttons import delivery_keyboard, quantity_keyboard
-from templates.documents import get_template, get_template_price
+from templates.documents import get_template
+from utils.i18n import get_i18n, user_language
 
 router = Router()
 
-# Хранилище временных данных пользователя (в реальном проекте - в БД/Redis)
+# Temporary user session storage (in production — use DB / Redis)
 user_sessions: Dict[int, Dict[str, Any]] = {}
 _sessions_lock = asyncio.Lock()
 
+# ── Currency selection ──────────────────────────────────────────────
+# For the demo, default to EUR. Change this logic as needed.
+DEFAULT_CURRENCY = "EUR"
+
+
+def _currency_symbol(currency: str) -> str:
+    return "€" if currency == "EUR" else "zł"
+
+
+def _currency_price(currency: str, doc_code: str) -> int:
+    """Return the price for a document in the requested currency."""
+    from data.business_config import get_price_eur, get_price_pln
+
+    if currency == "EUR":
+        return get_price_eur(doc_code)
+    return get_price_pln(doc_code)
+
+
+def _delivery_price(currency: str) -> int:
+    return DELIVERY_PRICE_EUR if currency == "EUR" else DELIVERY_PRICE_PLN
+
 
 async def _generate_order_id() -> str:
-    """
-    Генерирует уникальный номер заказа с проверкой на коллизии.
+    """Generate a unique order ID with collision checking.
 
-    Формат: ORDER_YYYYMMDD_XXXX (дата + 4 случайных символа).
-    Проверяет уникальность в БД. Если коллизия — делает до 5 попыток.
-
-    Returns:
-        Уникальный номер заказа (str).
+    Format: ORDER_YYYYMMDD_XXXX (date + 4 random hex chars).
     """
     today = datetime.datetime.utcnow().strftime("%Y%m%d")
     max_attempts = 5
     for _ in range(max_attempts):
-        suffix = secrets.token_hex(2).upper()  # 4 hex chars
+        suffix = secrets.token_hex(2).upper()
         order_id = f"ORDER_{today}_{suffix}"
 
-        # Check uniqueness in DB
         db = SessionLocal()
         try:
             existing = db.query(Order).filter(Order.order_id == order_id).first()
@@ -56,27 +72,18 @@ async def _generate_order_id() -> str:
         finally:
             db.close()
 
-    # Fallback: use more entropy
     suffix = secrets.token_hex(4).upper()
     return f"ORDER_{today}_{suffix}"
 
 
 async def get_user_session(user_id: int) -> Dict[str, Any]:
-    """
-    Возвращает сессию пользователя, создавая новую при необходимости.
-
-    Сессия хранит временные данные текущего заказа: корзину,
-    выбранные документы, данные доставки, способ оплаты.
-    В продакшене данные должны храниться в БД или Redis.
-
-    Использует asyncio.Lock для защиты от race condition
-    при одновременных запросах от одного пользователя.
+    """Return the user session, creating a new one if necessary.
 
     Args:
-        user_id: ID пользователя Telegram.
+        user_id: Telegram user ID.
 
     Returns:
-        Словарь с данными сессии пользователя.
+        Session dictionary.
     """
     async with _sessions_lock:
         if user_id not in user_sessions:
@@ -87,86 +94,100 @@ async def get_user_session(user_id: int) -> Dict[str, Any]:
                 "current_quantity": 0,
                 "current_items": [],
                 "temp_item_data": {},
+                "current_field_index": 0,
                 "current_item_index": 0,
                 "delivery": None,
                 "payment_method": None,
                 "total_price": 0,
+                "currency": DEFAULT_CURRENCY,
             }
         return user_sessions[user_id]
 
 
-def calculate_total_price(session: Dict[str, Any]) -> int:
-    """
-    Рассчитывает общую стоимость заказа с учётом доставки.
+def _doc_name(template: Dict[str, Any], language: str) -> str:
+    """Return the document name in the requested language.
 
-    Суммирует цены всех позиций в корзине (цена документа × количество).
-    Если выбран самовывоз — стоимость доставки не добавляется.
+    Falls back: language → en → ru → first found.
+    """
+    for key in (f"name_{language}", "name_en", "name_ru"):
+        val = template.get(key)
+        if val:
+            return val
+    # Ultimate fallback: any name_* key
+    for k, v in template.items():
+        if k.startswith("name_"):
+            return v
+    return template.get("code", "Unknown")
+
+
+def calculate_total_price(session: Dict[str, Any]) -> int:
+    """Calculate the total order price including delivery.
 
     Args:
-        session: Словарь сессии пользователя, содержащий корзину и данные доставки.
+        session: User session dictionary.
 
     Returns:
-        Общая сумма заказа в злотых (int).
+        Total price in the session's currency.
     """
+    currency = session.get("currency", DEFAULT_CURRENCY)
     total = 0
     for item in session.get("cart", []):
-        price = get_template_price(item["type"])
+        price = _currency_price(currency, item["type"])
         total += price * item["quantity"]
 
     if session.get("delivery"):
-        total += DELIVERY_PRICE
+        total += _delivery_price(currency)
 
     return total
 
 
 @router.callback_query(OrderState.choosing_document, F.data.startswith("doc_"))
 async def process_document_choice(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает выбор типа документа из списка доступных.
+    """Handle document type selection.
 
-    Загружает шаблон выбранного документа, сохраняет его в сессию
-    пользователя, показывает информацию о цене и предлагает выбрать
-    количество экземпляров. Переводит пользователя в состояние
-    ввода количества (OrderState.entering_quantity).
-
-    Args:
-        callback: CallbackQuery с data вида "doc_sanepid", "doc_bhp" и т.д.
-        state: Контекст FSM для сохранения текущего шага.
+    Loads the template, shows price info and asks for quantity.
     """
-    if not callback.data:
-        await callback.answer("❌ Ошибка обработки запроса")
+    if not callback.data or not callback.from_user:
+        await callback.answer("❌ Error processing request")
         return
+
     doc_type = callback.data.split("_")[1]
     template = get_template(doc_type)
     if not template:
-        await callback.answer("❌ Шаблон не найден")
+        await callback.answer("❌ Template not found")
         return
 
     user_id = callback.from_user.id
     session = await get_user_session(user_id)
+    lang = user_language(callback.from_user)
 
     session["current_doc_type"] = doc_type
     session["current_template"] = template
     session["current_items"] = []
     session["temp_item_data"] = {}
-    session["current_item_index"] = 0
+    session["current_field_index"] = 0
 
-    await state.update_data(current_step=f"Выбор количества: {template['name']}")
+    currency = session.get("currency", DEFAULT_CURRENCY)
+    price = _currency_price(currency, doc_type)
+    sym = _currency_symbol(currency)
+    name = _doc_name(template, lang)
+
+    await state.update_data(current_step=f"Quantity: {name}")
+
+    i18n = get_i18n()
+    text = i18n.get(
+        "choose_quantity",
+        language=lang,
+        name=name,
+        price=price,
+        currency=sym,
+    )
 
     if isinstance(callback.message, Message):
-        await callback.message.edit_text(
-            f"📄 *{template['name']}*\n\n"
-            f"Цена за единицу: {template['price']} zł\n\n"
-            f"Введите количество документов этого типа:",
-            reply_markup=quantity_keyboard(),
-        )
+        await callback.message.edit_text(text, reply_markup=quantity_keyboard())
     elif callback.bot:
         await callback.bot.send_message(
-            callback.from_user.id,
-            f"📄 *{template['name']}*\n\n"
-            f"Цена за единицу: {template['price']} zł\n\n"
-            f"Введите количество документов этого типа:",
-            reply_markup=quantity_keyboard(),
+            callback.from_user.id, text, reply_markup=quantity_keyboard()
         )
     await state.set_state(OrderState.entering_quantity)
     await callback.answer()
@@ -174,27 +195,22 @@ async def process_document_choice(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(OrderState.entering_quantity, F.data.startswith("qty_"))
 async def process_quantity(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает выбор количества документов (от 1 до 5).
-
-    Сохраняет выбранное количество в сессию и запускает процесс
-    заполнения полей для первого документа.
-
-    Args:
-        callback: CallbackQuery с data вида "qty_1", "qty_2" и т.д.
-        state: Контекст FSM.
-    """
-    if not callback.data or not isinstance(callback.message, Message):
-        await callback.answer("❌ Ошибка обработки запроса")
+    """Handle quantity selection (1–5)."""
+    if (
+        not callback.data
+        or not isinstance(callback.message, Message)
+        or not callback.from_user
+    ):
+        await callback.answer("❌ Error processing request")
         return
-    quantity = int(callback.data.split("_")[1])
 
+    quantity = int(callback.data.split("_")[1])
     user_id = callback.from_user.id
     session = await get_user_session(user_id)
 
     session["current_quantity"] = quantity
     session["current_items"] = []
-    session["current_item_index"] = 0
+    session["current_field_index"] = 0
 
     await ask_document_fields(callback.message, user_id, state)
     await state.set_state(OrderState.filling_document)
@@ -202,20 +218,7 @@ async def process_quantity(callback: CallbackQuery, state: FSMContext):
 
 
 async def ask_document_fields(message: Message, user_id: int, state: FSMContext):
-    """
-    Рекурсивно запрашивает у пользователя заполнение полей документа.
-
-    Функция последовательно показывает поля из шаблона документа
-    (ФИО, дата рождения, PESEL, адрес и т.д.). После заполнения всех
-    полей одного документа переходит к следующему. Когда все документы
-    данного типа заполнены — добавляет их в корзину и предлагает
-    выбрать доставку.
-
-    Args:
-        message: Сообщение, в которое выводится запрос поля.
-        user_id: ID пользователя для получения сессии.
-        state: Контекст FSM для сохранения индекса текущего поля.
-    """
+    """Recursively ask the user to fill in document fields."""
     session = await get_user_session(user_id)
     template = session["current_template"]
 
@@ -226,6 +229,7 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
     current_index = session.get("current_field_index", 0)
 
     if current_index >= len(fields):
+        # All fields for this document instance are filled
         session["current_items"].append(session["temp_item_data"].copy())
         session["temp_item_data"] = {}
 
@@ -233,6 +237,7 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
             session["current_field_index"] = 0
             await ask_document_fields(message, user_id, state)
         else:
+            # Add to cart
             session["cart"].append(
                 {
                     "type": session["current_doc_type"],
@@ -241,25 +246,36 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
                 }
             )
 
-            await message.answer(
-                f"✅ *{session['current_quantity']}x {template['name']}* "
-                "добавлено в заказ!\n\n"
-                "Что делаем дальше?",
-                reply_markup=delivery_keyboard(),
+            user = message.from_user
+            lang = user_language(user) if user else "en"
+            i18n = get_i18n()
+            name = _doc_name(template, lang)
+
+            text = i18n.get(
+                "doc_added",
+                language=lang,
+                quantity=session["current_quantity"],
+                name=name,
             )
 
+            await message.answer(text, reply_markup=delivery_keyboard())
             await state.set_state(OrderState.asking_delivery)
-            await state.update_data(current_step="Выбор доставки")
+            await state.update_data(current_step="Delivery selection")
         return
 
     field = fields[current_index]
     prompt = field.prompt
-    optional_note = " (необязательно)" if field.optional else ""
+    optional_note = ""
+    if field.optional:
+        user = message.from_user
+        lang = user_language(user) if user else "en"
+        i18n = get_i18n()
+        optional_note = i18n.get("field_optional", language=lang)
 
     await message.answer(
-        f"📝 *Поле {current_index + 1}/{len(fields)}*\n\n"
+        f"📝 *Field {current_index + 1}/{len(fields)}*\n\n"
         f"{prompt}{optional_note}\n\n"
-        f"Отправьте ответ одним сообщением."
+        "Send your answer in one message."
     )
 
     await state.update_data(current_field_index=current_index)
@@ -268,19 +284,9 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
 
 @router.message(OrderState.filling_document)
 async def process_document_field(message: Message, state: FSMContext):
-    """
-    Обрабатывает ввод значения поля документа от пользователя.
-
-    Проверяет корректность данных: для дат проверяет формат,
-    для обязательных полей — что значение не пустое.
-    Сохраняет введённое значение и переходит к следующему полю.
-
-    Args:
-        message: Текстовое сообщение с ответом пользователя.
-        state: Контекст FSM с индексом текущего поля.
-    """
+    """Handle field value input from the user."""
     if not message.from_user or not message.text:
-        await message.answer("❌ Ошибка данных. Начните заказ заново /start")
+        await message.answer("❌ Error. Please start again: /start")
         await state.clear()
         return
 
@@ -292,18 +298,17 @@ async def process_document_field(message: Message, state: FSMContext):
 
     template = session.get("current_template")
     if not template:
-        await message.answer("❌ Ошибка. Начните заказ заново /start")
+        await message.answer("❌ Error. Please start again: /start")
         await state.clear()
         return
 
     fields = template["fields"]
-
     if field_index >= len(fields):
         return
 
     field = fields[field_index]
     if not field:
-        await message.answer("❌ Ошибка поля. Начните заказ заново /start")
+        await message.answer("❌ Error. Please start again: /start")
         await state.clear()
         return
 
@@ -311,73 +316,60 @@ async def process_document_field(message: Message, state: FSMContext):
 
     if field.type == "date":
         if len(value) < 6 or len(value) > 10:
-            await message.answer("❌ Неверный формат даты. Используйте ДД.ММ.ГГГГ")
+            await message.answer(
+                "❌ Invalid date format. Use DD.MM.YYYY"
+            )
             return
 
     if not field.optional and not value:
         await message.answer(
-            f"❌ Поле '{field.prompt}' обязательное. Пожалуйста, введите значение."
+            "❌ This field is required. Please enter a value."
         )
         return
 
     session["temp_item_data"][field.id] = value if value else "-"
 
-    await state.update_data(
-        current_step=f"Заполнение документа: поле {field_index + 1}"
-    )
-
+    await state.update_data(current_step=f"Filling document: field {field_index + 1}")
     session["current_field_index"] = field_index + 1
     await ask_document_fields(message, user_id, state)
 
 
 @router.callback_query(OrderState.asking_delivery, F.data.startswith("delivery_"))
 async def process_delivery_choice(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает выбор пользователя: нужна доставка или самовывоз.
-
-    Если выбрана доставка (delivery_yes) — запрашивает данные.
-    Если выбран самовывоз (delivery_no) — показывает сумму и оплату.
-
-    Args:
-        callback: CallbackQuery с data "delivery_yes" или "delivery_no".
-        state: Контекст FSM.
-    """
-    if not callback.data:
-        await callback.answer("❌ Ошибка обработки запроса")
+    """Handle delivery choice (yes / no)."""
+    if not callback.data or not callback.from_user:
+        await callback.answer("❌ Error processing request")
         return
+
     choice = callback.data.split("_")[1]
     user_id = callback.from_user.id
     session = await get_user_session(user_id)
+    lang = user_language(callback.from_user)
+    i18n = get_i18n()
 
     if choice == "yes":
+        text = i18n.get("delivery_prompt", language=lang)
         if isinstance(callback.message, Message):
-            await callback.message.edit_text(
-                "🚚 **Доставка InPost**\n\n"
-                "Введите данные для доставки одним сообщением в формате:\n\n"
-                "Имя и фамилия:\n"
-                "Номер телефона:\n"
-                "Email:\n"
-                "Номер пачкомата или адрес"
-            )
+            await callback.message.edit_text(text)
         elif callback.bot:
-            await callback.bot.send_message(
-                callback.from_user.id,
-                "🚚 **Доставка InPost**\n\n"
-                "Введите данные для доставки одним сообщением в формате:\n\n"
-                "Имя и фамилия:\n"
-                "Номер телефона:\n"
-                "Email:\n"
-                "Номер пачкомата или адрес",
-            )
+            await callback.bot.send_message(callback.from_user.id, text)
         await state.set_state(OrderState.filling_delivery)
-        await state.update_data(current_step="Заполнение данных доставки")
+        await state.update_data(current_step="Delivery details")
     else:
         session["delivery"] = None
 
         total = calculate_total_price(session)
         session["total_price"] = total
 
-        text = f"💰 **Сумма к оплате:** {total} zł\n\n" "Выберите способ оплаты:"
+        currency = session.get("currency", DEFAULT_CURRENCY)
+        sym = _currency_symbol(currency)
+
+        text = i18n.get(
+            "total_amount",
+            language=lang,
+            total=total,
+            currency=sym,
+        )
 
         from keyboards.buttons import payment_keyboard
 
@@ -394,53 +386,44 @@ async def process_delivery_choice(callback: CallbackQuery, state: FSMContext):
 
 @router.message(OrderState.filling_delivery)
 async def save_delivery(message: Message, state: FSMContext):
-    """
-    Сохраняет данные доставки от пользователя.
-
-    Ожидает текст в формате (построчно):
-        - Имя и фамилия
-        - Номер телефона
-        - Email
-        - Номер пачкомата или адрес
-
-    Args:
-        message: Текстовое сообщение с данными доставки.
-        state: Контекст FSM.
-    """
+    """Save delivery details from the user."""
     if not message.from_user or not message.text:
-        await message.answer("❌ Ошибка данных. Начните заказ заново /start")
+        await message.answer("❌ Error. Please start again: /start")
         await state.clear()
         return
 
     user_id = message.from_user.id
     session = await get_user_session(user_id)
+    lang = user_language(message.from_user)
+    i18n = get_i18n()
 
     lines = message.text.strip().split("\n")
 
     if len(lines) < 3:
-        await message.answer(
-            "❌ Пожалуйста, введите данные в правильном формате:\n\n"
-            "Имя и фамилия:\n"
-            "Номер телефона:\n"
-            "Email:\n"
-            "Номер пачкомата"
-        )
+        await message.answer(i18n.get("delivery_format_error", language=lang))
         return
 
     delivery = {
         "name": lines[0].strip() if len(lines) > 0 else "-",
         "phone": lines[1].strip() if len(lines) > 1 else "-",
         "email": lines[2].strip() if len(lines) > 2 else "-",
-        "paczkomat": lines[3].strip() if len(lines) > 3 else "-",
+        "address": lines[3].strip() if len(lines) > 3 else "-",
     }
     session["delivery"] = delivery
 
     total = calculate_total_price(session)
     session["total_price"] = total
 
-    text = (
-        f"💰 **Сумма к оплате:** {total} zł (включая доставку {DELIVERY_PRICE} zł)\n\n"
-        "Выберите способ оплаты:"
+    currency = session.get("currency", DEFAULT_CURRENCY)
+    sym = _currency_symbol(currency)
+    del_price = _delivery_price(currency)
+
+    text = i18n.get(
+        "total_with_delivery",
+        language=lang,
+        total=total,
+        currency=sym,
+        delivery_price=del_price,
     )
 
     from keyboards.buttons import payment_keyboard
@@ -451,79 +434,58 @@ async def save_delivery(message: Message, state: FSMContext):
 
 @router.callback_query(OrderState.choosing_payment, F.data.startswith("pay_"))
 async def process_payment(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает выбор способа оплаты (Blik, гривна, USDT).
-
-    Показывает платёжные реквизиты и предупреждение об уточнении
-    курса/суммы при оплате не в день заказа.
-
-    Args:
-        callback: CallbackQuery с data "pay_blik", "pay_uah" или "pay_usdt".
-        state: Контекст FSM.
-    """
-    if not callback.data:
-        await callback.answer("❌ Ошибка обработки запроса")
+    """Handle payment method selection."""
+    if not callback.data or not callback.from_user:
+        await callback.answer("❌ Error processing request")
         return
+
     payment_method = callback.data.split("_")[1]
     user_id = callback.from_user.id
     session = await get_user_session(user_id)
+    lang = user_language(callback.from_user)
+    i18n = get_i18n()
 
     session["payment_method"] = payment_method
 
     from config import PAYMENT_DETAILS
 
-    if payment_method == "blik":
-        details = PAYMENT_DETAILS["blik"]
-    elif payment_method == "uah":
-        details = PAYMENT_DETAILS["uah"]
-    else:
-        details = PAYMENT_DETAILS["usdt"]
+    details = PAYMENT_DETAILS.get(payment_method, "Details not available")
 
-    warning = (
-        "\n\n⚠️ Если оплата не сегодня, перед оплатой уточните изменения у менеджера."
-    )
-
-    message_text = (
-        f"💳 **Способ оплаты: {payment_method.upper()}**\n\n"
-        f"{details}{warning}\n\n"
-        "После оплаты отправьте фото/скриншот чека."
+    text = i18n.get(
+        "payment_details",
+        language=lang,
+        method=payment_method.upper(),
+        details=details,
     )
 
     if isinstance(callback.message, Message):
-        await callback.message.edit_text(message_text, parse_mode="Markdown")
+        await callback.message.edit_text(text, parse_mode="Markdown")
     elif callback.bot:
         await callback.bot.send_message(
-            callback.from_user.id, message_text, parse_mode="Markdown"
+            callback.from_user.id, text, parse_mode="Markdown"
         )
 
     await state.set_state(OrderState.waiting_for_payment_proof)
-    await state.update_data(current_step="Ожидание подтверждения оплаты")
+    await state.update_data(current_step="Waiting for payment proof")
     await callback.answer()
 
 
 @router.message(OrderState.waiting_for_payment_proof)
 async def process_payment_proof(message: Message, state: FSMContext):
-    """
-    Обрабатывает подтверждение оплаты — фото или PDF чека.
-
-    Генерирует номер заказа, формирует данные и отправляет менеджеру.
-    После отправки сохраняет заказ в БД и очищает сессию пользователя.
-
-    Args:
-        message: Сообщение с фото/документом чека оплаты.
-        state: Контекст FSM (очищается после обработки).
-    """
+    """Handle payment proof — photo or PDF receipt."""
     if not message.from_user or not message.bot:
-        await message.answer("❌ Ошибка. Начните заказ заново /start")
+        await message.answer("❌ Error. Please start again: /start")
         await state.clear()
         return
 
     user_id = message.from_user.id
     session = await get_user_session(user_id)
     cart = session.get("cart", [])
+    lang = user_language(message.from_user)
+    i18n = get_i18n()
 
     if not cart:
-        await message.answer("❌ Корзина пуста. Начните заказ заново через /start.")
+        await message.answer("❌ Cart is empty. Start again: /start.")
         await state.clear()
         async with _sessions_lock:
             user_sessions.pop(user_id, None)
@@ -540,12 +502,9 @@ async def process_payment_proof(message: Message, state: FSMContext):
         has_photo = True
 
     if not has_photo:
-        await message.answer(
-            "📸 Пожалуйста, отправьте фото или скриншот чека об оплате."
-        )
+        await message.answer(i18n.get("payment_proof_required", language=lang))
         return
 
-    # Generate a secure, readable order ID
     order_id = await _generate_order_id()
 
     order_data = {
@@ -554,6 +513,7 @@ async def process_payment_proof(message: Message, state: FSMContext):
         "delivery": session.get("delivery"),
         "payment_method": session.get("payment_method"),
         "total_price": session.get("total_price"),
+        "currency": session.get("currency", DEFAULT_CURRENCY),
         "user": {"id": user_id, "username": message.from_user.username},
     }
 
@@ -571,8 +531,8 @@ async def process_payment_proof(message: Message, state: FSMContext):
 
         logging.getLogger(__name__).error(f"Failed to send order to manager: {e}")
         await message.answer(
-            f"✅ **Заказ #{order_id} создан, но не удалось отправить менеджеру.**\n\n"
-            f"Пожалуйста, свяжитесь с поддержкой."
+            f"✅ **Order #{order_id} created, but failed to notify manager.**\n\n"
+            "Please contact support."
         )
 
     # Save order to database
@@ -590,9 +550,10 @@ async def process_payment_proof(message: Message, state: FSMContext):
             documents=cart,
         )
 
-        # Create order items
         for cart_item in cart:
-            price = get_template_price(cart_item["type"])
+            price = _currency_price(
+                session.get("currency", DEFAULT_CURRENCY), cart_item["type"]
+            )
             create_order_item(
                 db=db,
                 order_id=db_order.id,
@@ -605,10 +566,7 @@ async def process_payment_proof(message: Message, state: FSMContext):
         db.close()
 
     await message.answer(
-        f"✅ **Заказ #{order_id} принят!**\n\n"
-        "📮 Завтра/послезавтра будет готово.\n"
-        "Мы сообщим вам, когда документ будет готов к отправке.\n\n"
-        "Спасибо за заказ! 👋",
+        i18n.get("order_accepted", language=lang, order_id=order_id),
         parse_mode="Markdown",
     )
 
@@ -619,25 +577,19 @@ async def process_payment_proof(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "cart_add_more")
 async def callback_add_more(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает нажатие кнопки "Добавить ещё документ" в корзине.
+    """Handle "Add more" button — show document list again."""
+    if not callback.from_user:
+        await callback.answer()
+        return
 
-    Показывает список доступных типов документов для добавления
-    новых позиций в уже существующий заказ.
-
-    Args:
-        callback: CallbackQuery с data == "cart_add_more".
-        state: Контекст FSM.
-    """
     from keyboards.buttons import document_keyboard as doc_kb
     from templates.documents import get_all_templates as get_templates
 
     docs = get_templates()
+    lang = user_language(callback.from_user)
+    i18n = get_i18n()
 
-    text = (
-        "📋 **Выберите документ для заказа:**\n\n"
-        "Также вы можете воспользоваться кнопкой 'Связь с менеджером'"
-    )
+    text = i18n.get("choose_document", language=lang)
 
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=doc_kb(docs))
@@ -651,22 +603,20 @@ async def callback_add_more(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "cart_clear")
 async def callback_clear_cart(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает нажатие кнопки "Очистить корзину".
+    """Handle "Clear cart" button."""
+    if not callback.from_user:
+        await callback.answer()
+        return
 
-    Удаляет все позиции из корзины пользователя и показывает главное меню.
-
-    Args:
-        callback: CallbackQuery с data == "cart_clear".
-        state: Контекст FSM.
-    """
     user_id = callback.from_user.id
     session = await get_user_session(user_id)
     session["cart"] = []
     session["delivery"] = None
     session["total_price"] = 0
 
-    text = "🗑 Корзина очищена.\n\nНачните новый заказ:"
+    lang = user_language(callback.from_user)
+    i18n = get_i18n()
+    text = i18n.get("cart_cleared", language=lang)
 
     from keyboards.buttons import main_menu_keyboard
 
@@ -682,22 +632,19 @@ async def callback_clear_cart(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "cart_checkout")
 async def callback_checkout(callback: CallbackQuery, state: FSMContext):
-    """
-    Обрабатывает нажатие кнопки "Перейти к оплате" в корзине.
+    """Handle "Proceed to payment" — show cart summary and payment options."""
+    if not callback.from_user:
+        await callback.answer()
+        return
 
-    Показывает сводку корзины: список документов, их количество,
-    цены, доставку (если есть), итоговую сумму.
-    Затем показывает способы оплаты.
-
-    Args:
-        callback: CallbackQuery с data == "cart_checkout".
-        state: Контекст FSM.
-    """
     user_id = callback.from_user.id
     session = await get_user_session(user_id)
+    lang = user_language(callback.from_user)
+    i18n = get_i18n()
+
     if not session.get("cart"):
         await callback.answer(
-            "Корзина пуста. Добавьте документ перед оплатой.",
+            "Cart is empty. Add a document before checkout.",
             show_alert=True,
         )
         await state.set_state(OrderState.choosing_document)
@@ -706,25 +653,36 @@ async def callback_checkout(callback: CallbackQuery, state: FSMContext):
     total = calculate_total_price(session)
     session["total_price"] = total
 
+    currency = session.get("currency", DEFAULT_CURRENCY)
+    sym = _currency_symbol(currency)
+
     # Build cart summary
-    summary_lines = ["🛒 **Сводка заказа:**\n"]
+    summary_lines = []
     for cart_item in session.get("cart", []):
-        doc_name = get_template(cart_item["type"])
-        name = doc_name["name"] if doc_name else cart_item["type"]
-        price = get_template_price(cart_item["type"])
+        doc = get_template(cart_item["type"])
+        name = _doc_name(doc, lang) if doc else cart_item["type"]
+        price = _currency_price(currency, cart_item["type"])
         item_total = price * cart_item["quantity"]
-        summary_lines.append(f"📄 {name} x{cart_item['quantity']} = {item_total} zł")
+        summary_lines.append(f"📄 {name} x{cart_item['quantity']} = {item_total} {sym}")
 
     delivery = session.get("delivery")
     if delivery:
-        summary_lines.append(f"🚚 Доставка: +{DELIVERY_PRICE} zł")
+        del_price = _delivery_price(currency)
+        summary_lines.append(f"🚚 Delivery: +{del_price} {sym}")
         summary_lines.append(f"   📮 {delivery.get('name', '-')}")
     else:
-        summary_lines.append("🚚 Самовывоз")
+        summary_lines.append("🚚 Pickup (no delivery)")
 
-    summary_lines.append(f"\n💰 **Итого: {total} zł**")
+    summary_text = "\n".join(summary_lines)
 
-    text = "\n".join(summary_lines) + "\n\nВыберите способ оплаты:"
+    text = i18n.get(
+        "cart_summary",
+        language=lang,
+        items=summary_text,
+        delivery="",
+        total=total,
+        currency=sym,
+    )
 
     from keyboards.buttons import payment_keyboard
 

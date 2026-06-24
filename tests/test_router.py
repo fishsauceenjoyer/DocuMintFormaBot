@@ -33,14 +33,15 @@ def _order_data(order_id="ORDER_TEST"):
         "order_id": order_id,
         "documents": [
             {
-                "type": "sanepid",
+                "type": "visa",
                 "quantity": 1,
                 "items": [{"full_name": "Test User"}],
             }
         ],
         "delivery": None,
-        "payment_method": "blik",
-        "total_price": 150,
+        "payment_method": "card",
+        "total_price": 35,
+        "currency": "EUR",
         "user": {"id": 123, "username": "testuser"},
     }
 
@@ -56,7 +57,7 @@ def clean_orders():
 async def test_send_order_to_manager_routes_message_and_stores_admin_metadata(
     monkeypatch,
 ):
-    monkeypatch.setattr(router, "ROUTING", {"sanepid": 111, "default": 999})
+    monkeypatch.setattr(router, "ROUTING", {"visa": 111, "default": 999})
     bot = RecordingBot()
 
     target = await router.send_order_to_manager(
@@ -73,14 +74,14 @@ async def test_send_order_to_manager_routes_message_and_stores_admin_metadata(
     assert bot.messages[0]["chat_id"] == 111
     assert "ORDER_TEST" in bot.messages[0]["text"]
     assert orders["ORDER_TEST"]["user_id"] == 123
-    assert orders["ORDER_TEST"]["total_price"] == 150
+    assert orders["ORDER_TEST"]["total_price"] == 35
 
 
 @pytest.mark.asyncio
 async def test_send_order_to_manager_keeps_order_metadata_when_telegram_fails(
     monkeypatch,
 ):
-    monkeypatch.setattr(router, "ROUTING", {"sanepid": 111, "default": 999})
+    monkeypatch.setattr(router, "ROUTING", {"visa": 111, "default": 999})
 
     target = await router.send_order_to_manager(
         bot=FailingBot(),

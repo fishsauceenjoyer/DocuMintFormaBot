@@ -1,10 +1,9 @@
 """
-Инлайн-клавиатуры (inline keyboards) для Telegram-бота (только русский язык).
+Inline keyboard definitions for the Telegram bot.
 
-Каждая функция возвращает объект InlineKeyboardMarkup для
-отображения кнопок под сообщениями в зависимости от контекста:
-выбор типа документа, количества, доставки, оплаты,
-действий с корзиной и действий менеджера.
+Each function returns an :class:`InlineKeyboardMarkup` used in different
+contexts: document type selection, quantity, delivery, payment, cart
+actions, and manager actions.
 """
 
 from typing import List, Tuple

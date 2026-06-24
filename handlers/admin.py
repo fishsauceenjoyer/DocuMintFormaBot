@@ -3,6 +3,7 @@
 Admins use this module to list orders, view stats, mark work as done, and send
 ready documents or tracking numbers back to clients. The in-memory orders map
 bridges manager callbacks to the Telegram user ID collected during checkout.
+(Messages are in the bot's default language unless otherwise noted.)
 """
 
 import re

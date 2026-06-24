@@ -12,24 +12,17 @@ from typing import List, Optional, cast
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from config import DATABASE_URL
 from db.models import Base, DocumentType, Order, OrderItem, User
 
-engine_kwargs = {}
-if DATABASE_URL.startswith("sqlite"):
-    engine_kwargs = {
-        "connect_args": {"check_same_thread": False},
-        "poolclass": StaticPool,
-    }
+# SQLAlchemy engine — works with both SQLite (local dev) and PostgreSQL (production).
+# Connection pooling is handled by SQLAlchemy's default pool for each dialect.
+# For SQLite with concurrent access, pool_size and max_overflow are ignored
+# (SQLite only allows one writer at a time, which is fine for single-bot usage).
+engine = create_engine(DATABASE_URL)
 
-engine = create_engine(DATABASE_URL, **engine_kwargs)
-
-# Create tables
-Base.metadata.create_all(engine)
-
-# Session factory
+# Session factory (tables are created in init_db() / init_default_document_types())
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

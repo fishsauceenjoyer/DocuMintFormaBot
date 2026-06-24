@@ -10,55 +10,61 @@ import sys
 
 from dotenv import load_dotenv
 
+from data.business_config import (
+    DELIVERY_PRICE_EUR,
+    DELIVERY_PRICE_PLN,
+    PAYMENT_DETAILS as BIZ_PAYMENT_DETAILS,
+    ROUTING_KEYS,
+)
+
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# ID чатов для разных типов документов (из .env)
-ROUTING = {
-    "sanepid": int(os.getenv("ROUTING_SANEPID", "-100123456789")),
-    "bhp": int(os.getenv("ROUTING_BHP", "-100987654321")),
-    "psychotests": int(os.getenv("ROUTING_PSYCHOTESTS", "123456789")),
-    "pesel": int(os.getenv("ROUTING_PESEL", "-100123456788")),
-    "default": int(os.getenv("ROUTING_DEFAULT", "555555555")),
+# Chat IDs for different document types (from .env)
+# Keys are automatically built from the business config's ROUTING_KEYS mapping
+# e.g. ROUTING_VISA, ROUTING_PASSPORT, etc.
+ROUTING: dict[str, int] = {
+    doc_code: int(os.getenv(env_key, "-100123456789"))
+    for doc_code, env_key in ROUTING_KEYS.items()
 }
+ROUTING["default"] = int(os.getenv("ROUTING_DEFAULT", "555555555"))
 
-# Реквизиты для оплаты (из .env)
+# Payment details (from business_config — override via .env if needed)
 PAYMENT_DETAILS = {
-    "blik": os.getenv("PAYMENT_BLIK", "Номер телефона: +48 123 456 789"),
-    "uah": os.getenv(
-        "PAYMENT_UAH", "ПриватБанк: 5168 7456 1234 5678\nПолучатель: Ivanov Ivan"
-    ),
-    "usdt": os.getenv("PAYMENT_USDT", "TRC20: TXYZ... (кошелек)"),
+    "card": os.getenv("PAYMENT_CARD", BIZ_PAYMENT_DETAILS["card"]),
+    "crypto": os.getenv("PAYMENT_CRYPTO", BIZ_PAYMENT_DETAILS["crypto"]),
+    "online": os.getenv("PAYMENT_ONLINE", BIZ_PAYMENT_DETAILS["online"]),
 }
 
-# Стоимость доставки
-DELIVERY_PRICE = 20  # zł
+# Delivery prices
+DELIVERY_PRICE_PLN = DELIVERY_PRICE_PLN
+DELIVERY_PRICE_EUR = DELIVERY_PRICE_EUR
+# Convenience alias for backwards-compatibility (uses PLN)
+DELIVERY_PRICE = DELIVERY_PRICE_PLN
 
-# Админ username
+# Admin username
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 
-# База данных
+# Database
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///bot.db")
 
 
 def validate_config() -> None:
     """
-    Проверяет обязательные настройки конфигурации при запуске бота.
+    Validate required configuration at bot startup.
 
-    Выполняет проверки:
-        - BOT_TOKEN должен быть задан и не быть значением-заглушкой
-        - ADMIN_USERNAME должен быть задан
-        - Все chat_id в ROUTING должны быть валидными целыми числами
-        - DATABASE_URL должен быть задан
+    Checks:
+        - BOT_TOKEN is set and not a placeholder
+        - ADMIN_USERNAME is set
+        - All ROUTING chat IDs are valid integers
+        - DATABASE_URL is set
 
     Raises:
-        SystemExit: Если какая-либо проверка не пройдена,
-                    с выводом описания ошибки в stderr.
+        SystemExit: If any check fails, with details written to stderr.
     """
     errors: list[str] = []
 
-    # Check BOT_TOKEN
     if not BOT_TOKEN:
         errors.append("BOT_TOKEN is not set in .env file")
     elif BOT_TOKEN == "your_bot_token_here":
@@ -67,22 +73,14 @@ def validate_config() -> None:
             "Replace it with a real token from @BotFather"
         )
 
-    # Check ADMIN_USERNAME
     if not ADMIN_USERNAME:
         errors.append("ADMIN_USERNAME is not set in .env file")
 
-    # Check ROUTING chat_ids
-    for key, chat_id_value in [
-        ("ROUTING_SANEPID", ROUTING.get("sanepid")),
-        ("ROUTING_BHP", ROUTING.get("bhp")),
-        ("ROUTING_PSYCHOTESTS", ROUTING.get("psychotests")),
-        ("ROUTING_PESEL", ROUTING.get("pesel")),
-        ("ROUTING_DEFAULT", ROUTING.get("default")),
-    ]:
+    for doc_code, env_key in ROUTING_KEYS.items():
+        chat_id_value = ROUTING.get(doc_code)
         if chat_id_value is None:
-            errors.append(f"{key} is not set in .env file")
+            errors.append(f"{env_key} is not set in .env file")
 
-    # Check DATABASE_URL
     if not DATABASE_URL:
         errors.append("DATABASE_URL is not set in .env file")
 
