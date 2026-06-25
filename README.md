@@ -152,6 +152,34 @@ business. It defines:
 | 📑 Apostille                          | 120  | 30   |
 | 🚚 Delivery                           | +20  | +5   |
 
+### Switching business configuration
+
+The repository ships with **two** business config files:
+
+| File | Purpose |
+|------|---------|
+| `data/business_config.py` | **Active** — demo "consular services" (demo_service, demo_document, etc.) |
+| `data/business_config_original.py` | **Reference** — original data (demo_category, BHP, demo_code, psychotests) — **not imported** |
+
+To switch back to the original configuration:
+
+1. Rename files:
+   ```bash
+   mv data/business_config.py data/business_config_demo.py      # keep demo as backup
+   mv data/business_config_original.py data/business_config.py  # activate original
+   ```
+2. Update `.env` — replace routing variable names and chat IDs:
+
+   | Demo variable | Original variable |
+   |---|---|
+   | `ROUTING_demo_service` | `ROUTING_demo_category` |
+   | `ROUTING_demo_document` | `ROUTING_BHP` |
+   | `ROUTING_demo_check` | `ROUTING_PSYCHOTESTS` |
+   | `ROUTING_APOSTILLE` | `ROUTING_demo_code` |
+
+3. (Optional) Reset `locales/` strings if the original payment methods (`blik`, `uah`, `usdt`) are used.
+
+
 ---
 
 ## Admin commands
