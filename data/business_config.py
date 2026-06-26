@@ -3,6 +3,8 @@ Business configuration — the single source of truth for all domain-specific da
 
 This file contains:
 - Document types, their fields, prices (PLN & EUR) and routing keys
+- Allowed destination countries for visa applications
+- Passport number format (regex pattern)
 - Delivery price
 - Payment details (placeholders)
 
@@ -15,18 +17,37 @@ from templates.fields import Field
 
 
 # ──────────────────────────────────────────────────────────────────────
+# Allowed destination countries (for visa / document travel fields)
+# ──────────────────────────────────────────────────────────────────────
+COUNTRY_CODES: Dict[str, Dict[str, str]] = {
+    "PL": {"en": "Poland", "ru": "Польша", "uk": "Польща"},
+    "RU": {"en": "Russia", "ru": "Россия", "uk": "Росія"},
+    "RS": {"en": "Serbia", "ru": "Сербия", "uk": "Сербія"},
+    "AM": {"en": "Armenia", "ru": "Армения", "uk": "Вірменія"},
+}
+
+ALLOWED_COUNTRIES_HINT: str = " / ".join(
+    f"{v['en']} ({k})" for k, v in COUNTRY_CODES.items()
+)
+
+DESTINATION_COUNTRIES: List[str] = list(COUNTRY_CODES.keys())
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Passport number format (regex)
+# ──────────────────────────────────────────────────────────────────────
+PASSPORT_NUMBER_PATTERN: str = r"^[A-Z0-9\s\-\.\/]{3,30}$"
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Currencies
+# ──────────────────────────────────────────────────────────────────────
+SUPPORTED_CURRENCIES: List[str] = ["EUR", "PLN"]
+
+
+# ──────────────────────────────────────────────────────────────────────
 # Document types
 # ──────────────────────────────────────────────────────────────────────
-# Each entry defines:
-#   - code:         unique routing key (used in ROUTING dict, .env, callbacks)
-#   - name_ru:      Russian display name
-#   - name_uk:      Ukrainian display name
-#   - name_en:      English display name
-#   - fields:       list of input fields the customer must fill in
-#   - example:      example filled-in data (shown as hint)
-#   - price_pln:    unit price in Polish złoty
-#   - price_eur:    unit price in Euros
-
 DOCUMENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
     "visa": {
         "name_ru": "🗺 Визовая анкета",
@@ -35,26 +56,29 @@ DOCUMENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "price_pln": 150,
         "price_eur": 35,
         "fields": [
-            Field("full_name", "👤 Full name (as in passport)", "text"),
+            Field("full_name", "👤 Full name (as in passport)", "text", max_length=255),
             Field("birth_date", "🎂 Date of birth (DD.MM.YYYY)", "date"),
             Field(
                 "passport_number",
                 "🛂 Passport number (series & number)",
-                "text",
+                "passport_number",
+                max_length=30,
             ),
             Field(
                 "destination_country",
-                "🌍 Destination country",
-                "text",
+                "🌍 Destination country (country code, e.g. PL, RU, RS, AM)",
+                "country_code",
+                max_length=2,
             ),
             Field(
                 "purpose",
                 "✈️ Purpose of visit (tourism / business / study / other)",
                 "text",
+                max_length=255,
             ),
         ],
         "example": (
-            "Olena Romenko\n18.11.1996\nFB363261\nPoland\ntourism"
+            "Olena Romenko\n18.11.1996\nFB363261\nPL\ntourism"
         ),
     },
     "passport": {
@@ -64,10 +88,10 @@ DOCUMENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "price_pln": 200,
         "price_eur": 45,
         "fields": [
-            Field("full_name", "👤 Full name", "text"),
+            Field("full_name", "👤 Full name", "text", max_length=255),
             Field("birth_date", "🎂 Date of birth (DD.MM.YYYY)", "date"),
-            Field("birth_place", "📍 Place of birth", "text"),
-            Field("address", "🏠 Residential address", "text"),
+            Field("birth_place", "📍 Place of birth", "text", max_length=255),
+            Field("address", "🏠 Residential address", "text", max_length=255),
         ],
     },
     "criminal_record_check": {
@@ -77,9 +101,9 @@ DOCUMENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "price_pln": 100,
         "price_eur": 25,
         "fields": [
-            Field("full_name", "👤 Full name", "text"),
+            Field("full_name", "👤 Full name", "text", max_length=255),
             Field("birth_date", "🎂 Date of birth (DD.MM.YYYY)", "date"),
-            Field("birth_place", "📍 Place of birth", "text"),
+            Field("birth_place", "📍 Place of birth", "text", max_length=255),
         ],
     },
     "apostille": {
@@ -89,20 +113,19 @@ DOCUMENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "price_pln": 120,
         "price_eur": 30,
         "fields": [
-            Field("full_name", "👤 Full name", "text"),
-            Field("document_type", "📄 Type of document to apostille", "text"),
+            Field("full_name", "👤 Full name", "text", max_length=255),
+            Field("document_type", "📄 Type of document to apostille", "text", max_length=255),
             Field("issue_date", "📅 Date of issue (DD.MM.YYYY)", "date"),
             Field(
                 "issuing_authority",
                 "🏛 Issuing authority",
                 "text",
+                max_length=255,
             ),
         ],
     },
 }
 
-# ──────────────────────────────────────────────────────────────────────
-# Routing keys (maps document code → ROUTING key for .env)
 # ──────────────────────────────────────────────────────────────────────
 ROUTING_KEYS: Dict[str, str] = {
     "visa": "ROUTING_VISA",
@@ -111,15 +134,9 @@ ROUTING_KEYS: Dict[str, str] = {
     "apostille": "ROUTING_APOSTILLE",
 }
 
-# ──────────────────────────────────────────────────────────────────────
-# Delivery
-# ──────────────────────────────────────────────────────────────────────
 DELIVERY_PRICE_PLN: int = 20
 DELIVERY_PRICE_EUR: int = 5
 
-# ──────────────────────────────────────────────────────────────────────
-# Payment details (placeholder — replace with real ones)
-# ──────────────────────────────────────────────────────────────────────
 PAYMENT_DETAILS: Dict[str, str] = {
     "card": "Bank transfer: PL00 0000 0000 0000 0000 0000 0000\n"
             "Recipient: Consular Services Ltd.",
@@ -129,22 +146,18 @@ PAYMENT_DETAILS: Dict[str, str] = {
 
 
 def get_template(doc_code: str) -> Dict[str, Any] | None:
-    """Return the document template by its code, or *None* if not found."""
     return DOCUMENT_TEMPLATES.get(doc_code)
 
 
 def get_all_templates() -> List[tuple]:
-    """Return a list of (code, name_en) tuples for all active templates."""
     return [(k, v["name_en"]) for k, v in DOCUMENT_TEMPLATES.items()]
 
 
 def get_price_pln(doc_code: str) -> int:
-    """Return the PLN price for a document, or 0 if not found."""
     tpl = DOCUMENT_TEMPLATES.get(doc_code)
     return tpl["price_pln"] if tpl else 0
 
 
 def get_price_eur(doc_code: str) -> int:
-    """Return the EUR price for a document, or 0 if not found."""
     tpl = DOCUMENT_TEMPLATES.get(doc_code)
     return tpl["price_eur"] if tpl else 0

@@ -8,6 +8,7 @@ completed orders are saved through db.crud.
 
 import asyncio
 import datetime
+import logging
 import secrets
 from typing import Any, Dict
 
@@ -272,9 +273,13 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
         i18n = get_i18n()
         optional_note = i18n.get("field_optional", language=lang)
 
+    # Add type/length hint to the prompt
+    type_hint = field.type_hint()
+
     await message.answer(
         f"📝 *Field {current_index + 1}/{len(fields)}*\n\n"
         f"{prompt}{optional_note}\n\n"
+        f"💡 *Подсказка:* {type_hint}\n\n"
         "Send your answer in one message."
     )
 
@@ -282,9 +287,51 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
     session["current_field_index"] = current_index
 
 
+async def _notify_admin_validation_error(
+    message: Message,
+    user_id: int,
+    field_name: str,
+    field_type: str,
+    raw_value: str,
+    error_message: str,
+):
+    """Send a validation error notification to the admin.
+
+    Args:
+        message: The user's original message.
+        user_id: Telegram user ID.
+        field_name: The field ID that failed validation.
+        field_type: The expected field type.
+        raw_value: The raw input that failed.
+        error_message: The validation error description.
+    """
+    logger = logging.getLogger(__name__)
+    try:
+        from config import ROUTING
+
+        target = ROUTING.get("default")
+        if target is None or message.bot is None:
+            logger.warning("Cannot notify admin: no default routing or bot")
+            return
+
+        username = message.from_user.username if message.from_user else "unknown"
+        text = (
+            f"⚠️ **Ошибка валидации поля**\n\n"
+            f"👤 Клиент: @{username} (ID: {user_id})\n"
+            f"📋 Поле: `{field_name}` (тип: {field_type})\n"
+            f"💬 Введено: `{raw_value[:200]}`\n"
+            f"❌ Ошибка: {error_message}"
+        )
+        await message.bot.send_message(
+            chat_id=target, text=text, parse_mode="Markdown"
+        )
+    except Exception as e:
+        logger.warning(f"Failed to notify admin about validation error: {e}")
+
+
 @router.message(OrderState.filling_document)
 async def process_document_field(message: Message, state: FSMContext):
-    """Handle field value input from the user."""
+    """Handle field value input from the user with validation."""
     if not message.from_user or not message.text:
         await message.answer("❌ Error. Please start again: /start")
         await state.clear()
@@ -312,22 +359,56 @@ async def process_document_field(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    value = message.text.strip()
+    raw_value = message.text.strip()
 
-    if field.type == "date":
-        if len(value) < 6 or len(value) > 10:
-            await message.answer(
-                "❌ Invalid date format. Use DD.MM.YYYY"
-            )
-            return
+    # Optional field — allow empty
+    if field.optional and not raw_value:
+        session["temp_item_data"][field.id] = "-"
+        await state.update_data(
+            current_step=f"Filling document: field {field_index + 1}"
+        )
+        session["current_field_index"] = field_index + 1
+        await ask_document_fields(message, user_id, state)
+        return
 
-    if not field.optional and not value:
+    # Required field — reject empty
+    if not field.optional and not raw_value:
         await message.answer(
             "❌ This field is required. Please enter a value."
         )
         return
 
-    session["temp_item_data"][field.id] = value if value else "-"
+    # ── Validate the value ──────────────────────────────────────────
+    from utils.validation import validate_field_value
+
+    result = validate_field_value(
+        value=raw_value,
+        field_type=field.type,
+        max_length=field.max_length,
+        field_name=field.id,
+    )
+
+    if not result.is_valid:
+        # Notify admin about the validation failure
+        await _notify_admin_validation_error(
+            message=message,
+            user_id=user_id,
+            field_name=field.id,
+            field_type=field.type,
+            raw_value=raw_value,
+            error_message=result.error_message,
+        )
+
+        # Show error to user with retry
+        await message.answer(
+            f"❌ {result.error_message}\n\n"
+            f"Пожалуйста, попробуйте снова.\n"
+            f"💡 *Подсказка:* {field.type_hint()}"
+        )
+        return
+
+    # ── Store validated value ───────────────────────────────────────
+    session["temp_item_data"][field.id] = result.sanitized_value
 
     await state.update_data(current_step=f"Filling document: field {field_index + 1}")
     session["current_field_index"] = field_index + 1
