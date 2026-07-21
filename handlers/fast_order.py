@@ -58,7 +58,17 @@ async def process_fast_order(message: Message, state: FSMContext):
     """
     user = message.from_user
     if user is None:
-        await message.answer("⚠️ Could not get user information.")
+        lang = "en"
+        i18n = get_i18n()
+        await message.answer(i18n.get("error_no_user_info", language=lang))
+        return
+
+    lang = user_language(user)
+    i18n = get_i18n()
+
+    # Only text messages are accepted in fast order
+    if not message.text:
+        await message.answer(i18n.get("error_send_text", language=lang))
         return
 
     user_id = user.id
@@ -66,7 +76,7 @@ async def process_fast_order(message: Message, state: FSMContext):
 
     bot = message.bot
     if bot is None:
-        await message.answer("⚠️ Bot error. Please try again.")
+        await message.answer(i18n.get("error_bot_error", language=lang))
         return
 
     text = (
@@ -95,7 +105,8 @@ async def cmd_fast_order(message: Message, state: FSMContext):
     """
     user = message.from_user
     if user is None:
-        await message.answer("⚠️ Could not get user information.")
+        i18n = get_i18n()
+        await message.answer(i18n.get("error_no_user_info", language="en"))
         return
 
     lang = user_language(user)

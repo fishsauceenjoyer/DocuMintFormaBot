@@ -4,6 +4,8 @@ Provides the /start landing, /menu command, new-order navigation,
 and the "Contact manager" button handler.
 """
 
+import asyncio
+
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -16,6 +18,17 @@ from utils.i18n import get_i18n, user_language
 router = Router()
 
 
+async def _clear_user_session(user_id: int):
+    """Clean up the user session from order.py module."""
+    try:
+        from handlers.order import _sessions_lock, user_sessions
+
+        async with _sessions_lock:
+            user_sessions.pop(user_id, None)
+    except (ImportError, KeyError):
+        pass
+
+
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
     """Handle /start — entry point of the bot.
@@ -24,6 +37,9 @@ async def cmd_start(message: Message, state: FSMContext):
     Language is auto-detected from the user's Telegram settings.
     """
     await state.clear()
+
+    if message.from_user:
+        await _clear_user_session(message.from_user.id)
 
     user = message.from_user
     lang = user_language(user) if user else "en"
@@ -110,6 +126,9 @@ async def cmd_menu(message: Message, state: FSMContext):
     Clears the current order state and shows the main menu.
     """
     await state.clear()
+
+    if message.from_user:
+        await _clear_user_session(message.from_user.id)
 
     user = message.from_user
     lang = user_language(user) if user else "en"

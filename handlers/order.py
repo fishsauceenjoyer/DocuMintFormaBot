@@ -142,6 +142,16 @@ def calculate_total_price(session: Dict[str, Any]) -> int:
     return total
 
 
+@router.message(OrderState.choosing_document)
+async def fallback_choosing_document(message: Message, state: FSMContext):
+    """Fallback: user sent text instead of choosing a document button."""
+    if not message.from_user:
+        return
+    lang = user_language(message.from_user)
+    i18n = get_i18n()
+    await message.answer(i18n.get("error_use_buttons", language=lang))
+
+
 @router.callback_query(OrderState.choosing_document, F.data.startswith("doc_"))
 async def process_document_choice(callback: CallbackQuery, state: FSMContext):
     """Handle document type selection.
@@ -192,6 +202,16 @@ async def process_document_choice(callback: CallbackQuery, state: FSMContext):
         )
     await state.set_state(OrderState.entering_quantity)
     await callback.answer()
+
+
+@router.message(OrderState.entering_quantity)
+async def fallback_entering_quantity(message: Message, state: FSMContext):
+    """Fallback: user sent text instead of choosing quantity."""
+    if not message.from_user:
+        return
+    lang = user_language(message.from_user)
+    i18n = get_i18n()
+    await message.answer(i18n.get("error_use_buttons", language=lang))
 
 
 @router.callback_query(OrderState.entering_quantity, F.data.startswith("qty_"))
@@ -415,6 +435,16 @@ async def process_document_field(message: Message, state: FSMContext):
     await ask_document_fields(message, user_id, state)
 
 
+@router.message(OrderState.asking_delivery)
+async def fallback_asking_delivery(message: Message, state: FSMContext):
+    """Fallback: user sent text instead of choosing delivery option."""
+    if not message.from_user:
+        return
+    lang = user_language(message.from_user)
+    i18n = get_i18n()
+    await message.answer(i18n.get("error_use_buttons", language=lang))
+
+
 @router.callback_query(OrderState.asking_delivery, F.data.startswith("delivery_"))
 async def process_delivery_choice(callback: CallbackQuery, state: FSMContext):
     """Handle delivery choice (yes / no)."""
@@ -513,6 +543,16 @@ async def save_delivery(message: Message, state: FSMContext):
     await state.set_state(OrderState.choosing_payment)
 
 
+@router.message(OrderState.choosing_payment)
+async def fallback_choosing_payment(message: Message, state: FSMContext):
+    """Fallback: user sent text instead of choosing payment method."""
+    if not message.from_user:
+        return
+    lang = user_language(message.from_user)
+    i18n = get_i18n()
+    await message.answer(i18n.get("error_use_buttons", language=lang))
+
+
 @router.callback_query(OrderState.choosing_payment, F.data.startswith("pay_"))
 async def process_payment(callback: CallbackQuery, state: FSMContext):
     """Handle payment method selection."""
@@ -567,6 +607,16 @@ async def process_payment_proof(message: Message, state: FSMContext):
 
     if not cart:
         await message.answer("❌ Cart is empty. Start again: /start.")
+        await state.clear()
+        async with _sessions_lock:
+            user_sessions.pop(user_id, None)
+        return
+
+    # Validate that payment method and total price are set
+    payment_method = session.get("payment_method")
+    total_price = session.get("total_price", 0)
+    if not payment_method or total_price <= 0:
+        await message.answer(i18n.get("error_payment_incomplete", language=lang))
         await state.clear()
         async with _sessions_lock:
             user_sessions.pop(user_id, None)
