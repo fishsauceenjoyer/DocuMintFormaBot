@@ -1,4 +1,4 @@
-# DocuFintFormaBot 🗺
+# DocuMintFormaBot 🗺
 
 **Telegram bot for document ordering services** — a complete order-processing FSM
 (Finite State Machine) with multi-language support, inline keyboards, cart
@@ -79,8 +79,8 @@ documintformabot/
 
 ```bash
 # Clone the repository
-git clone https://github.com/fishsauceenjoyer/DocuFintFormaBot.git
-cd DocuFintFormaBot
+git clone https://github.com/fishsauceenjoyer/DocuMintFormaBot.git
+cd DocuMintFormaBot
 
 # Create virtual environment (Windows)
 python -m venv .venv
@@ -323,7 +323,7 @@ pytest --cov=. -v
 
 2. **Configure the remote** (one time):
    ```bash
-   git remote add origin https://github.com/fishsauceenjoyer/DocuFintFormaBot.git
+   git remote add origin https://github.com/fishsauceenjoyer/DocuMintFormaBot.git
    ```
 
 3. **Push the branch** (enter your GitHub username and the token as password):
