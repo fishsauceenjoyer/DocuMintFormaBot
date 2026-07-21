@@ -3,17 +3,132 @@
 The mocks mimic the aiogram objects used by handlers and record sent/edited
 messages locally, so unit tests can exercise FSM logic without Telegram API
 network calls.
+
+Failover behaviour
+------------------
+By default, all tests use mocked Telegram objects and never call the real API.
+This ensures tests run offline, fast, and without a bot token.
+
+If you pass ``--with-real-api`` on the command line AND the bot token is set
+AND ``api.telegram.org`` is reachable, the **telegram_available** fixture
+returns ``True``. Test modules that support a real-API code path can check
+this fixture and conditionally switch to live calls.  When the API is
+unreachable (or the flag is not given), the entire suite silently falls back
+to mocks without any test failure.
 """
 
+import asyncio
 import datetime
+import logging
+import socket
+import os
 from typing import Any, Dict, Optional
 
 import pytest
 from aiogram.types import CallbackQuery, Chat, InaccessibleMessage, Message, User
 
+logger = logging.getLogger(__name__)
+
+
+# ── CLI option ──────────────────────────────────────────────────────────
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Register a ``--with-real-api`` flag for live Telegram API tests."""
+    parser.addoption(
+        "--with-real-api",
+        action="store_true",
+        default=False,
+        help="Attempt real Telegram API calls (requires BOT_TOKEN + connectivity)",
+    )
+
+
+# ── Connectivity detection ──────────────────────────────────────────────
+
+def _telegram_api_reachable() -> bool:
+    """Check whether ``api.telegram.org`` is reachable via DNS + TCP.
+
+    Returns ``True`` only if the hostname resolves **and** a TCP connection
+    to port 443 succeeds within a short timeout.
+    """
+    try:
+        # DNS lookup
+        addresses = socket.getaddrinfo("api.telegram.org", 443)
+        if not addresses:
+            logger.info("telegram API unreachable: DNS returned no addresses")
+            return False
+
+        # Try connecting to the first resolved address
+        addr = addresses[0]
+        sock = socket.socket(addr[0], socket.SOCK_STREAM)
+        sock.settimeout(3.0)
+        try:
+            sock.connect(addr[4])
+            logger.info("telegram API reachable via %s", addr[4])
+            return True
+        except (OSError, socket.timeout) as exc:
+            logger.info("telegram API unreachable: %s", exc)
+            return False
+        finally:
+            sock.close()
+    except socket.gaierror as exc:
+        logger.info("telegram API unreachable (DNS): %s", exc)
+        return False
+
+
+def _bot_token_available() -> bool:
+    """Check whether a real ``BOT_TOKEN`` is set (not a placeholder)."""
+    token = os.getenv("BOT_TOKEN", "")
+    if not token:
+        return False
+    # Common placeholders found in .env.example files
+    placeholders = {"your_bot_token_here", "1234567890:YOUR_TOKEN"}
+    return token not in placeholders
+
+
+# ── Session-scoped availability flag ────────────────────────────────────
+
+
+@pytest.fixture(scope="session")
+def telegram_available(request: pytest.FixtureRequest) -> bool:
+    """Session-scoped flag indicating real Telegram API availability.
+
+    The check is performed once per test run.  It requires all three
+    conditions:
+
+    * ``--with-real-api`` is passed on the CLI **and**
+    * ``BOT_TOKEN`` env var is set to a non-placeholder value **and**
+    * ``api.telegram.org`` is reachable (DNS + TCP).
+
+    When any condition is missing the fixture returns ``False``, which causes
+    the entire suite to use mocks.
+    """
+    if not request.config.getoption("--with-real-api"):
+        logger.info("telegram API disabled: --with-real-api not passed")
+        return False
+
+    if not _bot_token_available():
+        logger.info("telegram API disabled: BOT_TOKEN missing or placeholder")
+        return False
+
+    return _telegram_api_reachable()
+
+
+@pytest.fixture(scope="session")
+def use_mocks(telegram_available: bool) -> bool:
+    """Fixture – should the test suite use mocks?
+
+    Returns ``True`` when the real Telegram API is **not** available,
+    so all tests automatically fall back to the mocked Telegram objects
+    defined below.
+    """
+    return not telegram_available
+
+
+# ── Mock Telegram objects ───────────────────────────────────────────────
+
 
 class MockBot:
-    """Мок-объект бота для тестирования."""
+    """Mock bot object that records sent messages locally."""
 
     def __init__(self):
         self._mock_message_sent: Optional[dict] = None
@@ -50,16 +165,14 @@ class MockBot:
 
 
 class MockMessage(Message):
-    """Мок-объект сообщения для тестирования, наследующий от aiogram.types.Message."""
+    """Mock Message subclass that captures edited / answered text."""
 
     def __init__(self, text=None, message_id=1, chat_id=123, user_id=123):
-        # Create minimal required params for Message
         chat = Chat(id=chat_id, type="private")
         from_user = User(
             id=user_id, is_bot=False, first_name="Test", username="testuser"
         )
         date = datetime.datetime.now()
-        # Call parent init with required fields FIRST
         super().__init__(
             message_id=message_id,
             date=date,
@@ -71,7 +184,6 @@ class MockMessage(Message):
         self._answered_text: Optional[str] = None
 
     async def edit_text(self, text, **kwargs):
-        """Store edited text locally instead of calling Telegram API."""
         self._edited_text = text
         return True
 
@@ -92,7 +204,6 @@ class MockCallback(CallbackQuery):
                 message_id=1, date=0, chat=Chat(id=user_id, type="private")
             )
 
-        # Call parent init with required fields
         super().__init__(
             id=f"callback_{user_id}_{datetime.datetime.now().timestamp()}",
             from_user=user,
@@ -112,7 +223,7 @@ class MockCallback(CallbackQuery):
 
 
 class MockFSMContext:
-    """Мок-объект контекста FSM для тестирования."""
+    """In-memory FSM context storage for testing."""
 
     def __init__(self):
         self._data: Dict[str, Any] = {}
@@ -133,29 +244,34 @@ class MockFSMContext:
         return self._data.copy()
 
 
+# ── Standard fixtures ───────────────────────────────────────────────────
+
+
 @pytest.fixture
 def mock_bot():
-    """Фикстура: мок-объект бота."""
+    """Return a ``MockBot`` instance."""
     return MockBot()
 
 
 @pytest.fixture
 def mock_fsm():
-    """Фикстура: мок-объект FSM контекста."""
+    """Return a ``MockFSMContext`` instance."""
     return MockFSMContext()
 
 
 @pytest.fixture
 def mock_callback():
-    """Фикстура: мок-объект callback с доступным сообщением."""
+    """Return a ``MockCallback`` with an accessible message (doc_visa)."""
     return MockCallback(data="doc_visa", message_accessible=True)
 
 
 @pytest.fixture
 def clean_user_sessions():
-    """Фикстура: очищает глобальное хранилище сессий между тестами."""
+    """Clear the global user session store before and after each test."""
     from handlers.order import user_sessions
 
     user_sessions.clear()
     yield
     user_sessions.clear()
+
+

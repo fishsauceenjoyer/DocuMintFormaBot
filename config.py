@@ -32,9 +32,9 @@ ROUTING["default"] = int(os.getenv("ROUTING_DEFAULT", "555555555"))
 
 # Payment details (from business_config — override via .env if needed)
 PAYMENT_DETAILS = {
-    "card": os.getenv("PAYMENT_CARD", BIZ_PAYMENT_DETAILS["card"]),
-    "crypto": os.getenv("PAYMENT_CRYPTO", BIZ_PAYMENT_DETAILS["crypto"]),
-    "online": os.getenv("PAYMENT_ONLINE", BIZ_PAYMENT_DETAILS["online"]),
+    "blik": os.getenv("PAYMENT_BLIK", BIZ_PAYMENT_DETAILS["blik"]),
+    "uah": os.getenv("PAYMENT_UAH", BIZ_PAYMENT_DETAILS["uah"]),
+    "usdt": os.getenv("PAYMENT_USDT", BIZ_PAYMENT_DETAILS["usdt"]),
 }
 
 # Delivery prices

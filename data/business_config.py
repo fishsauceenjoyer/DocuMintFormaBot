@@ -138,10 +138,13 @@ DELIVERY_PRICE_PLN: int = 20
 DELIVERY_PRICE_EUR: int = 5
 
 PAYMENT_DETAILS: Dict[str, str] = {
-    "card": "Bank transfer: PL00 0000 0000 0000 0000 0000 0000\n"
-            "Recipient: Consular Services Ltd.",
-    "crypto": "USDT (TRC20): TXYZ... (wallet address)",
-    "online": "Online payment link will be provided by the manager.",
+    "blik": "💳 Blik przelew na numer telefonu:\n"
+            "Nr tel: +48 123 456 789\n"
+            "Odbiorca: Consular Services Ltd.",
+    "uah": "🇺🇦 Перевод на гривневую карту ПриватБанк:\n"
+           "Карта: 5168 7456 3456 7890\n"
+           "Получатель: Иванова А.",
+    "usdt": "₿ USDT (TRC20): TXYZ... (wallet address)",
 }
 
 
