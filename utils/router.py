@@ -3,16 +3,21 @@
 Order handlers call this module after checkout. It chooses the manager chat by
 document type, sends the human-readable order and JSON payload, and stores the
 minimum metadata admins need to send documents or tracking updates later.
+
+All Telegram API calls are wrapped with error handling. If a routing chat is
+unreachable, the error is logged and a fallback notification is sent to the
+MANAGER_ID chat (configured via ``config.MANAGER_ID``).
 """
 
 import json
 import logging
+import traceback
 from typing import Optional
 
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
 
-from config import ROUTING
+from config import MANAGER_ID, ROUTING
 
 # Import admin's order storage to save user_id for later client notifications
 # This is a bridging fix; in production, use database
@@ -30,10 +35,11 @@ async def _safe_send(
     parse_mode: Optional[str] = None,
     photo: Optional[str] = None,
     reply_markup: Optional[InlineKeyboardMarkup] = None,
-) -> None:
+) -> bool:
     """Safely send a message or photo to a Telegram chat.
 
-    Catches all exceptions and logs them without re-raising.
+    Catches all exceptions, logs them with full traceback, and sends a
+    fallback notification to ``MANAGER_ID`` so the team knows a chat is down.
 
     Args:
         bot: Bot instance.
@@ -42,6 +48,9 @@ async def _safe_send(
         parse_mode: Parsing mode (Markdown / HTML).
         photo: File ID of a photo (if sending a photo).
         reply_markup: Inline keyboard markup.
+
+    Returns:
+        ``True`` if the send succeeded, ``False`` on failure.
     """
     try:
         if photo:
@@ -59,10 +68,38 @@ async def _safe_send(
                 parse_mode=parse_mode,
                 reply_markup=reply_markup,
             )
+        return True
     except Exception as e:
-        logger.warning(
-            f"Failed to send {'photo' if photo else 'message'} to {chat_id}: {e}"
+        logger.error(
+            "Failed to send %s to %s: %s\n%s",
+            "photo" if photo else "message",
+            chat_id,
+            e,
+            traceback.format_exc(),
         )
+
+        # Notify the fallback manager — but avoid infinite recursion if
+        # MANAGER_ID itself is the chat that failed.
+        if chat_id != MANAGER_ID:
+            try:
+                await bot.send_message(
+                    chat_id=MANAGER_ID,
+                    text=(
+                        f"⚠️ **Delivery failure**\n\n"
+                        f"Target chat `{chat_id}` is unreachable.\n"
+                        f"Error: {e}\n\n"
+                        f"Message preview:\n"
+                        f"```\n{text[:300]}\n```"
+                    ),
+                    parse_mode="Markdown",
+                )
+            except Exception:
+                logger.error(
+                    "Fallback notification to MANAGER_ID %s also failed.\n%s",
+                    MANAGER_ID,
+                    traceback.format_exc(),
+                )
+        return False
 
 
 async def send_order_to_manager(
@@ -77,6 +114,9 @@ async def send_order_to_manager(
     Builds a readable message with order details: document list, delivery info,
     total and payment method.
 
+    If the target chat is unreachable, falls back to MANAGER_ID and logs
+    the error.
+
     Args:
         bot: Bot instance for sending messages.
         order_data: Order payload dictionary.
@@ -84,7 +124,7 @@ async def send_order_to_manager(
         payment_proof_file_id: File ID of the payment proof image (if any).
 
     Returns:
-        Chat ID that the order was sent to.
+        Chat ID that the order was sent to (or MANAGER_ID on fallback).
     """
     if not order_data.get("documents"):
         logger.error("No documents in order data")
@@ -128,35 +168,89 @@ async def send_order_to_manager(
     text += f"💰 **Total:** {order_data['total_price']} {currency}\n"
     text += f"💳 **Payment:** {order_data['payment_method']}\n"
 
-    # Send with payment proof if available
-    manager_keyboard = manager_order_keyboard(order_data["order_id"])
-    if payment_proof_file_id:
-        text += "\n🖼 Payment proof attached below"
-        await _safe_send(
-            bot=bot,
-            chat_id=target,
-            text=text,
-            parse_mode="Markdown",
-            photo=payment_proof_file_id,
-            reply_markup=manager_keyboard,
-        )
-    else:
-        await _safe_send(
-            bot=bot,
-            chat_id=target,
-            text=text,
-            parse_mode="Markdown",
-            reply_markup=manager_keyboard,
-        )
+    # Attempt to send the order — with error handling
+    sent_ok = False
+    try:
+        manager_keyboard = manager_order_keyboard(order_data["order_id"])
+        if payment_proof_file_id:
+            text_with_proof = text + "\n🖼 Payment proof attached below"
+            sent_ok = await _safe_send(
+                bot=bot,
+                chat_id=target,
+                text=text_with_proof,
+                parse_mode="Markdown",
+                photo=payment_proof_file_id,
+                reply_markup=manager_keyboard,
+            )
+        else:
+            sent_ok = await _safe_send(
+                bot=bot,
+                chat_id=target,
+                text=text,
+                parse_mode="Markdown",
+                reply_markup=manager_keyboard,
+            )
 
-    # Send JSON for easy forwarding
-    json_data = json.dumps(order_data, ensure_ascii=False, indent=2)
-    await _safe_send(
-        bot=bot,
-        chat_id=target,
-        text=f"```json\n{json_data}\n```",
-        parse_mode="Markdown",
-    )
+        # Send JSON for easy forwarding (only if the first message succeeded)
+        if sent_ok:
+            json_data = json.dumps(order_data, ensure_ascii=False, indent=2)
+            await _safe_send(
+                bot=bot,
+                chat_id=target,
+                text=f"```json\n{json_data}\n```",
+                parse_mode="Markdown",
+            )
+    except Exception as e:
+        logger.error(
+            "Unexpected error sending order %s to %s: %s\n%s",
+            order_data["order_id"],
+            target,
+            e,
+            traceback.format_exc(),
+        )
+        sent_ok = False
+
+    # If the routed chat failed, fall back to MANAGER_ID
+    fallback_succeeded = False
+    if not sent_ok and target != MANAGER_ID:
+        logger.warning(
+            "Falling back to MANAGER_ID %s for order %s",
+            MANAGER_ID,
+            order_data["order_id"],
+        )
+        try:
+            manager_keyboard = manager_order_keyboard(order_data["order_id"])
+            fb_ok = await _safe_send(
+                bot=bot,
+                chat_id=MANAGER_ID,
+                text=(
+                    f"🆕 **FALLBACK — Order #{order_data['order_id']}**\n"
+                    f"_Target chat {target} was unreachable._\n\n"
+                    f"{text}"
+                ),
+                parse_mode="Markdown",
+                reply_markup=manager_keyboard,
+            )
+            if fb_ok:
+                json_data = json.dumps(order_data, ensure_ascii=False, indent=2)
+                await _safe_send(
+                    bot=bot,
+                    chat_id=MANAGER_ID,
+                    text=f"```json\n{json_data}\n```",
+                    parse_mode="Markdown",
+                )
+                fallback_succeeded = True
+        except Exception as e:
+            logger.error(
+                "Fallback send to MANAGER_ID %s also failed: %s\n%s",
+                MANAGER_ID,
+                e,
+                traceback.format_exc(),
+            )
+
+    if fallback_succeeded:
+        target = MANAGER_ID
+        sent_ok = True
 
     # Save order info (including user_id for admin lookup) to the orders dict
     with _orders_lock:
@@ -167,7 +261,12 @@ async def send_order_to_manager(
             "total_price": order_data.get("total_price", 0),
         }
 
-    logger.info(f"Order {order_data['order_id']} processed (target: {target})")
+    logger.info(
+        "Order %s processed (target: %s, sent_ok: %s)",
+        order_data["order_id"],
+        target,
+        sent_ok,
+    )
     return target
 
 
@@ -222,7 +321,12 @@ async def send_document_to_client(
             chat_id=client_id, document=file_id, caption=text, parse_mode="Markdown"
         )
     except Exception as e:
-        logger.error(f"Error sending document: {e}")
+        logger.error(
+            "Error sending document to client %s: %s\n%s",
+            client_id,
+            e,
+            traceback.format_exc(),
+        )
         await _safe_send(bot=bot, chat_id=client_id, text=text, parse_mode="Markdown")
 
 

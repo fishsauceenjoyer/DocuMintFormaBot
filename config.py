@@ -46,6 +46,9 @@ DELIVERY_PRICE = DELIVERY_PRICE_PLN
 # Admin username
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 
+# Fallback manager chat ID for error notifications (defaults to ROUTING["default"])
+MANAGER_ID = int(os.getenv("MANAGER_ID", ROUTING["default"]))
+
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///bot.db")
 
