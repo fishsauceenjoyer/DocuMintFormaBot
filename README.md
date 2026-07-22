@@ -32,7 +32,30 @@ management, delivery/payment options, and a manager/admin panel.
 
 ---
 
+## Screenshots
+
+See [docs/README.md](docs/README.md) for the full screenshot gallery.
+
+| Main menu | Document selection | Field filling | Payment |
+|---|---|---|---|
+| ![Main menu](docs/screenshots/main_menu.png) | ![Document choice](docs/screenshots/document_choice.png) | ![Field filling](docs/screenshots/field_filling.png) | ![Payment](docs/screenshots/payment.png) |
+
+> 📸 **Note:** Screenshots are placeholder images. Run the bot locally and
+> replace them with real captures from your Telegram client.
+
+---
+
 ## Project structure
+>>>>>>>
+</replace_in_file>
+<task_progress>- [x] Stage 4 completed and pushed
+- [x] Create branch feat/deploy-and-documentation
+- [x] Add Redis service to docker-compose.yml
+- [x] REDIS_URL already in .env.example
+- [x] Create docs/README.md with screenshot placeholders
+- [x] Add Screenshots section to README.md
+- [ ] Add Переменные окружения section to README.md
+- [ ] Commit and push Stage 5</task_progress>
 
 ```
 documintformabot/
@@ -202,6 +225,33 @@ To switch back to the original configuration:
 
 3. (Optional) Reset `locales/` strings if the original payment methods are used.
 
+
+---
+
+## Переменные окружения
+
+Полный шаблон со всеми переменными находится в [`.env.example`](.env.example).
+Скопируйте его перед запуском:
+
+```bash
+cp .env.example .env
+```
+
+| Переменная | Обязательна | Описание |
+|---|---|---|
+| `BOT_TOKEN` | ✅ | Токен бота от [@BotFather](https://t.me/BotFather) |
+| `ADMIN_USERNAME` | ✅ | Имя пользователя админа в Telegram (без `@`) |
+| `ROUTING_VISA` | ✅ | Chat ID для заказов на визу |
+| `ROUTING_PASSPORT` | ✅ | Chat ID для заказов на загранпаспорт |
+| `ROUTING_CRIMINAL_RECORD` | ✅ | Chat ID для справок о несудимости |
+| `ROUTING_APOSTILLE` | ✅ | Chat ID для апостиля |
+| `ROUTING_DEFAULT` | ✅ | Chat ID по умолчанию (fallback) |
+| `MANAGER_ID` | ❌ | Chat ID для fallback-уведомлений об ошибках |
+| `PAYMENT_BLIK` | ❌ | Реквизиты Blik |
+| `PAYMENT_UAH` | ❌ | Реквизиты UAH-перевода |
+| `PAYMENT_USDT` | ❌ | USDT-кошелёк |
+| `DATABASE_URL` | ❌ | URL базы данных (SQLite / PostgreSQL / MySQL) |
+| `REDIS_URL` | ❌ | URL Redis для FSM (опционально, для продакшена) |
 
 ---
 
