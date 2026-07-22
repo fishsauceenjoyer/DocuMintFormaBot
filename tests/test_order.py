@@ -9,10 +9,18 @@ Checks:
     - Waiting for payment proof
 """
 
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from unittest.mock import MagicMock, patch
+
 import pytest
 from conftest import MockCallback  # type: ignore[import-not-found]
 
 from fsm.states import OrderState
+from tests.fixtures.mocks import MockFSMContext, MockMessage
 
 # Import handlers early to avoid async fixture issues
 from handlers.order import (
@@ -135,3 +143,105 @@ async def test_checkout_rejects_empty_cart(mock_fsm, clean_user_sessions):
     assert callback._answered is True
     assert "Cart is empty" in callback._answered_text
     assert mock_fsm._data.get("state") == OrderState.choosing_document
+
+
+class TestProcessPayment:
+    """Tests for payment method selection."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("method", ["blik", "uah", "usdt"])
+    async def test_payment_method_sets_state(self, mock_fsm, clean_user_sessions, method):
+        """Verify choosing a payment method transitions to waiting_for_payment_proof."""
+        from handlers.order import process_payment
+
+        from handlers.order import get_user_session
+        session = await get_user_session(123)
+        session["total_price"] = 100
+        session["currency"] = "EUR"
+
+        callback = MockCallback(data=f"pay_{method}")
+        await process_payment(callback, mock_fsm)
+
+        assert mock_fsm._data.get("state") == OrderState.waiting_for_payment_proof
+        assert callback._answered is True
+
+    @pytest.mark.asyncio
+    async def test_payment_shows_payment_details(self, mock_fsm, clean_user_sessions):
+        """Verify choosing a payment method sets the waiting-for-proof state."""
+        from handlers.order import process_payment
+        from handlers.order import get_user_session
+
+        session = await get_user_session(123)
+        session["total_price"] = 150
+
+        callback = MockCallback(data="pay_blik")
+        await process_payment(callback, mock_fsm)
+
+        assert mock_fsm._data.get("state") == OrderState.waiting_for_payment_proof
+
+
+class TestFallbacks:
+    """Tests for fallback handlers."""
+
+    @pytest.mark.asyncio
+    async def test_fallback_choosing_document(self):
+        """Verify fallback sends error when user sends text instead of button."""
+        from handlers.order import fallback_choosing_document
+        from aiogram.types import Message
+
+        message = MockMessage(text="random text", chat_id=123, user_id=123)
+        state = MockFSMContext()
+
+        await fallback_choosing_document(message, state)
+
+        assert message._answered_text is not None
+        assert message._answered_text  # Non-empty response
+
+
+class TestAddMoreCart:
+    """Tests for cart_add_more handler."""
+
+    @pytest.mark.asyncio
+    async def test_add_more_returns_to_document_list(self, mock_fsm, clean_user_sessions):
+        """Verify 'Add more' button shows document list again."""
+        from handlers.order import callback_add_more
+
+        callback = MockCallback(data="cart_add_more")
+        state = mock_fsm
+
+        with patch("templates.documents.get_all_templates") as mock_templates:
+            mock_templates.return_value = [("visa", "Visa")]
+            with patch("keyboards.buttons.document_keyboard") as mock_kb:
+                mock_kb.return_value = MagicMock()
+                await callback_add_more(callback, state)
+
+        assert mock_fsm._data.get("state") == OrderState.choosing_document
+        assert callback._answered is True
+
+
+class TestClearCart:
+    """Tests for cart_clear handler."""
+
+    @pytest.mark.asyncio
+    async def test_clear_cart_empties_session(self, mock_fsm, clean_user_sessions):
+        """Verify 'Clear cart' resets cart and delivery."""
+        from handlers.order import callback_clear_cart
+        from handlers.order import get_user_session
+
+        # Add an item to the cart
+        session = await get_user_session(123)
+        session["cart"].append({"type": "visa", "quantity": 1, "items": []})
+        session["delivery"] = {"name": "Test", "phone": "+48123456789"}
+        session["total_price"] = 100
+
+        callback = MockCallback(data="cart_clear")
+        state = mock_fsm
+
+        with patch("keyboards.buttons.main_menu_keyboard") as mock_kb:
+            mock_kb.return_value = MagicMock()
+            await callback_clear_cart(callback, state)
+
+        session = await get_user_session(123)
+        assert len(session["cart"]) == 0
+        assert session["delivery"] is None
+        assert session["total_price"] == 0

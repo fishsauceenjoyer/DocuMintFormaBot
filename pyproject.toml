@@ -14,3 +14,14 @@ exclude = '''
 profile = "black"
 line_length = 88
 skip = [".venv", ".git", "__pycache__", ".pytest_cache", "data"]
+
+
+[tool.pytest.ini_options]
+markers = [
+    "fast: unit tests that run in <1s",
+    "slow: integration tests that take >1s",
+    "fsm: tests related to FSM state transitions",
+    "integration: tests that hit the real database or external API",
+]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
