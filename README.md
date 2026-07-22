@@ -230,6 +230,54 @@ pytest -v --with-real-api
 pytest --cov=. -v
 ```
 
+## Database migrations
+
+This project uses **Alembic** for schema versioning. The initial migration
+`migrations/versions/138da28f5512_initial_schema.py` captures the current SQLAlchemy
+models (`users`, `document_types`, `orders`, `order_items`).
+
+### First-time setup
+
+```bash
+# Install Alembic if not already present
+pip install alembic
+
+# Apply all migrations to the local SQLite database
+alembic upgrade head
+```
+
+### Common commands
+
+```bash
+# Create a new empty migration
+alembic revision -m "describe your change"
+
+# Autogenerate a migration from model changes (best-effort; review before applying)
+alembic revision --autogenerate -m "describe your change"
+
+# Apply migrations
+alembic upgrade head
+
+# Downgrade one step
+alembic downgrade -1
+
+# Show current revision
+alembic current
+```
+
+### Switching environments
+
+`migrations/env.py` reads `DATABASE_URL` from the environment, so the same
+migrations work for SQLite, PostgreSQL, and MySQL without code changes:
+
+```env
+# Local development
+DATABASE_URL=sqlite:///bot.db
+
+# Production
+DATABASE_URL=postgresql://user:pass@host/db
+```
+
 The test suite has a **failover mechanism**: by default all tests use mocked
 Telegram objects and run completely offline. Pass `--with-real-api` to test
 against the live Telegram API (requires `BOT_TOKEN` + internet connectivity).
