@@ -8,17 +8,71 @@ This file contains:
 - Delivery price
 - Payment details (placeholders)
 
-Replace these values with your own business data when deploying.
+Document templates are loaded from ``config/templates.yaml`` so that business
+users can edit them without touching Python code.
 """
 
-from typing import Any, Dict, List
+import os
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 from templates.fields import Field
 
+# ──────────────────────────────────────────────────────────────────────────
+# YAML template loader
+# ──────────────────────────────────────────────────────────────────────────
+_TEMPLATES_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "config", "templates.yaml"
+)
 
-# ──────────────────────────────────────────────────────────────────────
+
+def _yaml_to_fields(field_list: List[dict]) -> List[Field]:
+    """Convert a list of YAML field dicts into Field objects."""
+    return [
+        Field(
+            id=f["id"],
+            prompt=f["prompt"],
+            field_type=f.get("type", "text"),
+            optional=f.get("optional", False),
+            max_length=f.get("max_length"),
+        )
+        for f in field_list
+    ]
+
+
+def _load_templates() -> Dict[str, Dict[str, Any]]:
+    """Load and parse document templates from the YAML file.
+
+    Returns:
+        The same structure as the old hardcoded DOCUMENT_TEMPLATES dict
+        (with ``Field`` objects in the ``"fields"`` key).
+    """
+    path = _TEMPLATES_PATH
+    if not os.path.isfile(path):
+        # Fallback to empty dict so the bot can start without the file
+        return {}
+
+    with open(path, encoding="utf-8") as fh:
+        raw: dict = yaml.safe_load(fh) or {}
+
+    templates: Dict[str, Dict[str, Any]] = {}
+    for code, data in raw.items():
+        templates[code] = {
+            "name_ru": data.get("name_ru", ""),
+            "name_uk": data.get("name_uk", ""),
+            "name_en": data.get("name_en", ""),
+            "price_pln": data.get("price_pln", 0),
+            "price_eur": data.get("price_eur", 0),
+            "fields": _yaml_to_fields(data.get("fields", [])),
+            "example": data.get("example", ""),
+        }
+    return templates
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # Allowed destination countries (for visa / document travel fields)
-# ──────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 COUNTRY_CODES: Dict[str, Dict[str, str]] = {
     "PL": {"en": "Poland", "ru": "Польша", "uk": "Польща"},
     "RU": {"en": "Russia", "ru": "Россия", "uk": "Росія"},
@@ -33,100 +87,24 @@ ALLOWED_COUNTRIES_HINT: str = " / ".join(
 DESTINATION_COUNTRIES: List[str] = list(COUNTRY_CODES.keys())
 
 
-# ──────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 # Passport number format (regex)
-# ──────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 PASSPORT_NUMBER_PATTERN: str = r"^[A-Z0-9\s\-\.\/]{3,30}$"
 
 
-# ──────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 # Currencies
-# ──────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 SUPPORTED_CURRENCIES: List[str] = ["EUR", "PLN"]
 
 
-# ──────────────────────────────────────────────────────────────────────
-# Document types
-# ──────────────────────────────────────────────────────────────────────
-DOCUMENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
-    "visa": {
-        "name_ru": "🗺 Визовая анкета",
-        "name_uk": "🗺 Візова анкета",
-        "name_en": "🗺 Visa application",
-        "price_pln": 150,
-        "price_eur": 35,
-        "fields": [
-            Field("full_name", "👤 Full name (as in passport)", "text", max_length=255),
-            Field("birth_date", "🎂 Date of birth (DD.MM.YYYY)", "date"),
-            Field(
-                "passport_number",
-                "🛂 Passport number (series & number)",
-                "passport_number",
-                max_length=30,
-            ),
-            Field(
-                "destination_country",
-                "🌍 Destination country (country code, e.g. PL, RU, RS, AM)",
-                "country_code",
-                max_length=2,
-            ),
-            Field(
-                "purpose",
-                "✈️ Purpose of visit (tourism / business / study / other)",
-                "text",
-                max_length=255,
-            ),
-        ],
-        "example": (
-            "Olena Romenko\n18.11.1996\nFB363261\nPL\ntourism"
-        ),
-    },
-    "passport": {
-        "name_ru": "🛂 Загранпаспорт",
-        "name_uk": "🛂 Загранпаспорт",
-        "name_en": "🛂 Foreign passport",
-        "price_pln": 200,
-        "price_eur": 45,
-        "fields": [
-            Field("full_name", "👤 Full name", "text", max_length=255),
-            Field("birth_date", "🎂 Date of birth (DD.MM.YYYY)", "date"),
-            Field("birth_place", "📍 Place of birth", "text", max_length=255),
-            Field("address", "🏠 Residential address", "text", max_length=255),
-        ],
-    },
-    "criminal_record_check": {
-        "name_ru": "📜 Справка о несудимости",
-        "name_uk": "📜 Довідка про несудимість",
-        "name_en": "📜 Criminal record check",
-        "price_pln": 100,
-        "price_eur": 25,
-        "fields": [
-            Field("full_name", "👤 Full name", "text", max_length=255),
-            Field("birth_date", "🎂 Date of birth (DD.MM.YYYY)", "date"),
-            Field("birth_place", "📍 Place of birth", "text", max_length=255),
-        ],
-    },
-    "apostille": {
-        "name_ru": "📑 Апостиль",
-        "name_uk": "📑 Апостиль",
-        "name_en": "📑 Apostille",
-        "price_pln": 120,
-        "price_eur": 30,
-        "fields": [
-            Field("full_name", "👤 Full name", "text", max_length=255),
-            Field("document_type", "📄 Type of document to apostille", "text", max_length=255),
-            Field("issue_date", "📅 Date of issue (DD.MM.YYYY)", "date"),
-            Field(
-                "issuing_authority",
-                "🏛 Issuing authority",
-                "text",
-                max_length=255,
-            ),
-        ],
-    },
-}
+# ──────────────────────────────────────────────────────────────────────────
+# Document templates — loaded from YAML
+# ──────────────────────────────────────────────────────────────────────────
+DOCUMENT_TEMPLATES: Dict[str, Dict[str, Any]] = _load_templates()
 
-# ──────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 ROUTING_KEYS: Dict[str, str] = {
     "visa": "ROUTING_VISA",
     "passport": "ROUTING_PASSPORT",
@@ -148,7 +126,7 @@ PAYMENT_DETAILS: Dict[str, str] = {
 }
 
 
-def get_template(doc_code: str) -> Dict[str, Any] | None:
+def get_template(doc_code: str) -> Optional[Dict[str, Any]]:
     return DOCUMENT_TEMPLATES.get(doc_code)
 
 

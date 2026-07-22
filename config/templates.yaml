@@ -1,0 +1,96 @@
+# Document templates — editable by business users without touching Python code.
+# Each template has: name_*, price_*, fields (list of field definitions).
+# Field keys: id, prompt, type, optional (bool), max_length (int).
+
+visa:
+  name_ru: "🗺 Визовая анкета"
+  name_uk: "🗺 Візова анкета"
+  name_en: "🗺 Visa application"
+  price_pln: 150
+  price_eur: 35
+  fields:
+    - id: full_name
+      prompt: "👤 Full name (as in passport)"
+      type: text
+      max_length: 255
+    - id: birth_date
+      prompt: "🎂 Date of birth (DD.MM.YYYY)"
+      type: date
+    - id: passport_number
+      prompt: "🛂 Passport number (series & number)"
+      type: passport_number
+      max_length: 30
+    - id: destination_country
+      prompt: "🌍 Destination country (country code, e.g. PL, RU, RS, AM)"
+      type: country_code
+      max_length: 2
+    - id: purpose
+      prompt: "✈️ Purpose of visit (tourism / business / study / other)"
+      type: text
+      max_length: 255
+  example: "Olena Romenko\n18.11.1996\nFB363261\nPL\ntourism"
+
+passport:
+  name_ru: "🛂 Загранпаспорт"
+  name_uk: "🛂 Загранпаспорт"
+  name_en: "🛂 Foreign passport"
+  price_pln: 200
+  price_eur: 45
+  fields:
+    - id: full_name
+      prompt: "👤 Full name"
+      type: text
+      max_length: 255
+    - id: birth_date
+      prompt: "🎂 Date of birth (DD.MM.YYYY)"
+      type: date
+    - id: birth_place
+      prompt: "📍 Place of birth"
+      type: text
+      max_length: 255
+    - id: address
+      prompt: "🏠 Residential address"
+      type: text
+      max_length: 255
+
+criminal_record_check:
+  name_ru: "📜 Справка о несудимости"
+  name_uk: "📜 Довідка про несудимість"
+  name_en: "📜 Criminal record check"
+  price_pln: 100
+  price_eur: 25
+  fields:
+    - id: full_name
+      prompt: "👤 Full name"
+      type: text
+      max_length: 255
+    - id: birth_date
+      prompt: "🎂 Date of birth (DD.MM.YYYY)"
+      type: date
+    - id: birth_place
+      prompt: "📍 Place of birth"
+      type: text
+      max_length: 255
+
+apostille:
+  name_ru: "📑 Апостиль"
+  name_uk: "📑 Апостиль"
+  name_en: "📑 Apostille"
+  price_pln: 120
+  price_eur: 30
+  fields:
+    - id: full_name
+      prompt: "👤 Full name"
+      type: text
+      max_length: 255
+    - id: document_type
+      prompt: "📄 Type of document to apostille"
+      type: text
+      max_length: 255
+    - id: issue_date
+      prompt: "📅 Date of issue (DD.MM.YYYY)"
+      type: date
+    - id: issuing_authority
+      prompt: "🏛 Issuing authority"
+      type: text
+      max_length: 255
