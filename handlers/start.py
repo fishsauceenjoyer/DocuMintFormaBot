@@ -140,7 +140,11 @@ async def cmd_menu(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "cancel_to_menu")
 async def callback_cancel_to_menu(callback: CallbackQuery, state: FSMContext):
-    """Handle "В главное меню" button — cancel current flow and return to main menu."""
+    """Handle "В главное меню" button — cancel current flow and return to main menu.
+
+    Sends a fresh welcome message instead of editing the existing one,
+    so the user sees a clean start screen at the bottom of the chat.
+    """
     await state.clear()
 
     if callback.from_user:
@@ -149,12 +153,19 @@ async def callback_cancel_to_menu(callback: CallbackQuery, state: FSMContext):
     user = callback.from_user
     lang = user_language(user) if user else "en"
     i18n = get_i18n()
-    text = i18n.get("menu", language=lang)
+    text = i18n.get("welcome", language=lang)
 
-    if isinstance(callback.message, Message):
-        await callback.message.edit_text(text, reply_markup=main_menu_keyboard())
-    elif callback.bot:
+    if callback.bot and user:
         await callback.bot.send_message(
-            callback.from_user.id, text, reply_markup=main_menu_keyboard()
+            chat_id=user.id,
+            text=text,
+            reply_markup=main_menu_keyboard(),
         )
+
     await callback.answer()
+    # Try to delete the old message to keep chat clean, but only if it's accessible
+    try:
+        if isinstance(callback.message, Message):
+            await callback.message.delete()
+    except Exception:
+        pass
