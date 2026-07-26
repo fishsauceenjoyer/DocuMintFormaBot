@@ -115,7 +115,8 @@ async def send_order_to_manager(
     total and payment method.
 
     If the target chat is unreachable, falls back to MANAGER_ID and logs
-    the error.
+    the error. If MANAGER_ID is also unreachable and equals the client's
+    user_id, sends the notification directly to the client.
 
     Args:
         bot: Bot instance for sending messages.
@@ -248,6 +249,44 @@ async def send_order_to_manager(
                 traceback.format_exc(),
             )
 
+    # If all routing failed, try sending directly to the client (manager=client scenario)
+    if not sent_ok and not fallback_succeeded:
+        logger.warning(
+            "All routing failed for order %s, trying direct send to client %s",
+            order_data["order_id"],
+            user_id,
+        )
+        try:
+            manager_keyboard = manager_order_keyboard(order_data["order_id"])
+            direct_ok = await _safe_send(
+                bot=bot,
+                chat_id=user_id,
+                text=(
+                    f"🆕 **YOUR ORDER #{order_data['order_id']}**\n"
+                    f"_Sent directly to you (manager routing unavailable)._ \n\n"
+                    f"{text}"
+                ),
+                parse_mode="Markdown",
+                reply_markup=manager_keyboard,
+            )
+            if direct_ok:
+                json_data = json.dumps(order_data, ensure_ascii=False, indent=2)
+                await _safe_send(
+                    bot=bot,
+                    chat_id=user_id,
+                    text=f"```json\n{json_data}\n```",
+                    parse_mode="Markdown",
+                )
+                sent_ok = True
+                target = user_id
+        except Exception as e:
+            logger.error(
+                "Direct send to client %s also failed: %s\n%s",
+                user_id,
+                e,
+                traceback.format_exc(),
+            )
+
     if fallback_succeeded:
         target = MANAGER_ID
         sent_ok = True
@@ -335,6 +374,9 @@ async def forward_to_manager(
 ) -> None:
     """Forward a help request from a user to the manager chat.
 
+    If the default routing chat is unreachable, sends the help request
+    directly to the user (manager=client scenario).
+
     Args:
         bot: Bot instance.
         user_id: Telegram user ID.
@@ -352,6 +394,22 @@ async def forward_to_manager(
         f"```\n{message_text}\n```"
     )
 
-    await _safe_send(bot=bot, chat_id=target, text=text, parse_mode="Markdown")
+    sent = await _safe_send(bot=bot, chat_id=target, text=text, parse_mode="Markdown")
+
+    # If routing failed, try sending directly to the user (manager=client scenario)
+    if not sent:
+        logger.warning(
+            "Help request routing to %s failed, sending directly to user %s",
+            target,
+            user_id,
+        )
+        direct_text = (
+            f"🆘 **Your help request**\n\n"
+            f"📍 Stuck at: {current_step}\n\n"
+            f"💬 Your message:\n"
+            f"```\n{message_text}\n```\n\n"
+            f"_Manager routing is unavailable. A manager will review your request._"
+        )
+        await _safe_send(bot=bot, chat_id=user_id, text=direct_text, parse_mode="Markdown")
 
     logger.info(f"Help request from user {user_id} forwarded to manager")

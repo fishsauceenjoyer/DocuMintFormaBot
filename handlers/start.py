@@ -136,3 +136,25 @@ async def cmd_menu(message: Message, state: FSMContext):
     text = i18n.get("menu", language=lang)
 
     await message.answer(text, reply_markup=main_menu_keyboard())
+
+
+@router.callback_query(F.data == "cancel_to_menu")
+async def callback_cancel_to_menu(callback: CallbackQuery, state: FSMContext):
+    """Handle "В главное меню" button — cancel current flow and return to main menu."""
+    await state.clear()
+
+    if callback.from_user:
+        await _clear_user_session(callback.from_user.id)
+
+    user = callback.from_user
+    lang = user_language(user) if user else "en"
+    i18n = get_i18n()
+    text = i18n.get("menu", language=lang)
+
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(text, reply_markup=main_menu_keyboard())
+    elif callback.bot:
+        await callback.bot.send_message(
+            callback.from_user.id, text, reply_markup=main_menu_keyboard()
+        )
+    await callback.answer()
