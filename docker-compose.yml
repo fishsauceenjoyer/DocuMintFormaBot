@@ -24,6 +24,21 @@ services:
     # depends_on:
     #   - postgres
 
+  # Redis for FSM storage in production (optional)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: tg-bot-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
   # PostgreSQL for local development (опционально)
   # postgres:
   #   image: postgres:15-alpine
