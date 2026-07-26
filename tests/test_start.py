@@ -153,3 +153,42 @@ class TestCallbackHelpManager:
 
         mock_forward.assert_called_once()
         assert mock_forward.call_args[1]["user_id"] == 123
+
+
+class TestCallbackCancelToMenu:
+    """Tests for the 'cancel_to_menu' callback handler."""
+
+    @pytest.mark.asyncio
+    async def test_cancel_to_menu_clears_state_and_shows_menu(self):
+        """Verify 'cancel_to_menu' clears state and shows main menu."""
+        from handlers.start import callback_cancel_to_menu
+        callback = MockCallback(data="cancel_to_menu")
+        state = MockFSMContext()
+        state._data["state"] = "some_deep_state"
+
+        await callback_cancel_to_menu(callback, state)
+
+        assert state._data.get("state") is None  # state cleared
+        assert callback._answered is True
+        # MockMessage doesn't inherit from aiogram.types.Message,
+        # so isinstance check fails and bot.send_message is used instead
+        assert len(callback.bot.sent_messages) > 0
+
+    @pytest.mark.asyncio
+    async def test_cancel_to_menu_clears_user_session(self):
+        """Verify 'cancel_to_menu' clears user session."""
+        from handlers.start import callback_cancel_to_menu
+        from handlers.order import user_sessions, _sessions_lock
+
+        # Set up a session
+        async with _sessions_lock:
+            user_sessions[123] = {"cart": ["test"]}
+
+        callback = MockCallback(data="cancel_to_menu", user_id=123)
+        state = MockFSMContext()
+
+        await callback_cancel_to_menu(callback, state)
+
+        # Session should be cleared
+        async with _sessions_lock:
+            assert 123 not in user_sessions
