@@ -21,7 +21,7 @@ class TestDocumentKeyboard:
         keyboard = buttons.document_keyboard(docs)
 
         assert isinstance(keyboard, InlineKeyboardMarkup)
-        assert len(keyboard.inline_keyboard) == 3  # 2 docs + help_manager
+        assert len(keyboard.inline_keyboard) == 4  # 2 docs + help_manager + cancel_to_menu
 
     def test_document_keyboard_callback_data(self):
         """Verify callback data follows 'doc_<code>' pattern."""
@@ -32,11 +32,12 @@ class TestDocumentKeyboard:
         assert "doc_visa" in callback_data
         assert "doc_passport" in callback_data
         assert "help_manager" in callback_data
+        assert "cancel_to_menu" in callback_data
 
     def test_document_keyboard_empty_docs(self):
         """Verify keyboard works with empty docs list."""
         keyboard = buttons.document_keyboard([])
-        assert len(keyboard.inline_keyboard) == 1  # Only help_manager
+        assert len(keyboard.inline_keyboard) == 2  # help_manager + cancel_to_menu
 
 
 class TestQuantityKeyboard:
@@ -53,8 +54,8 @@ class TestQuantityKeyboard:
     def test_quantity_keyboard_button_count(self):
         """Verify correct number of buttons."""
         keyboard = buttons.quantity_keyboard()
-        # One row with 5 numbers + one row with help_manager
-        assert len(keyboard.inline_keyboard) == 2
+        # One row with 5 numbers + one row with help_manager + one row with cancel_to_menu
+        assert len(keyboard.inline_keyboard) == 3
 
 
 class TestDeliveryKeyboard:
