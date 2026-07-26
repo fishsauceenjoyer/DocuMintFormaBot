@@ -296,8 +296,26 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
     # Add type/length hint to the prompt
     type_hint = field.type_hint()
 
+    # Build progress indicator: document X of Y
+    current_doc_num = len(session["current_items"]) + 1
+    total_docs = session["current_quantity"]
+    progress_str = f"📄 *Документ {current_doc_num} из {total_docs}*"
+
+    # Build summary of already-entered fields for the current document
+    entered_fields = session.get("temp_item_data", {})
+    summary_lines = []
+    for f in fields:
+        if f.id in entered_fields:
+            summary_lines.append(f"  ✅ {f.prompt}: {entered_fields[f.id]}")
+        elif fields.index(f) < current_index:
+            summary_lines.append(f"  ✅ {f.prompt}: {session['temp_item_data'].get(f.id, '✓')}")
+    summary_text = ""
+    if summary_lines:
+        summary_text = "\n" + "\n".join(summary_lines) + "\n"
+
     await message.answer(
-        f"📝 *Field {current_index + 1}/{len(fields)}*\n\n"
+        f"{progress_str}{summary_text}\n\n"
+        f"📝 *Поле {current_index + 1}/{len(fields)}*\n\n"
         f"{prompt}{optional_note}\n\n"
         f"💡 *Подсказка:* {type_hint}\n\n"
         "Send your answer in one message."
