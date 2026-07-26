@@ -162,7 +162,14 @@ async def process_document_choice(callback: CallbackQuery, state: FSMContext):
         await callback.answer("❌ Error processing request")
         return
 
-    doc_type = callback.data.split("_")[1]
+    # The callback data format is "doc_{doc_type}" where doc_type may contain underscores
+    # e.g. "doc_criminal_record_check" -> doc_type = "criminal_record_check"
+    # Using split with maxsplit=1 to handle multi-part document codes
+    parts = callback.data.split("_", 1)
+    if len(parts) < 2:
+        await callback.answer("❌ Error processing request")
+        return
+    doc_type = parts[1]
     template = get_template(doc_type)
     if not template:
         await callback.answer("❌ Template not found")
