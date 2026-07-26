@@ -11,6 +11,7 @@ MANAGER_ID chat (configured via ``config.MANAGER_ID``).
 
 import json
 import logging
+import re
 import traceback
 from typing import Optional
 
@@ -26,6 +27,19 @@ from keyboards.buttons import manager_order_keyboard
 from templates.documents import get_template
 
 logger = logging.getLogger(__name__)
+
+
+def _escape_markdown(text: str) -> str:
+    """Escape Markdown special characters to prevent parse errors.
+
+    Telegram's MarkdownV2 requires escaping: _ * [ ] ( ) ~ ` > # + - = | { } . !
+    For regular Markdown mode, the main problematic chars are: _ * ` [ ]
+    This function escapes the most common ones to avoid "can't find end of entity" errors.
+    """
+    # Escape characters that are problematic in Telegram Markdown
+    # Both opening and closing brackets need escaping to avoid parse errors
+    escape_chars = r"_*`[]"
+    return re.sub(f"([{re.escape(escape_chars)}])", r"\\\1", text)
 
 
 async def _safe_send(
@@ -138,7 +152,7 @@ async def send_order_to_manager(
 
     # Build readable message
     text = f"🆕 **NEW ORDER #{order_data['order_id']}**\n"
-    text += f"👤 Client: {order_data['user'].get('username') or f'ID: {user_id}'}\n\n"
+    text += f"👤 Client: {_escape_markdown(order_data['user'].get('username') or f'ID: {user_id}')}\n\n"
 
     for doc in order_data["documents"]:
         doc_type = doc["type"]
@@ -151,7 +165,7 @@ async def send_order_to_manager(
         for idx, item in enumerate(doc.get("items", []), 1):
             text += f"  {idx}. "
             for k, v in item.items():
-                text += f"{k}: {v} "
+                text += f"{_escape_markdown(k)}: {_escape_markdown(str(v))} "
             text += "\n"
         text += "\n"
 
@@ -159,15 +173,15 @@ async def send_order_to_manager(
     delivery = order_data.get("delivery")
     if delivery:
         text += "🚚 **Delivery:**\n"
-        text += f"  Name: {delivery.get('name', '-')}\n"
-        text += f"  Phone: {delivery.get('phone', '-')}\n"
-        text += f"  Email: {delivery.get('email', '-')}\n"
-        text += f"  Address: {delivery.get('address', '-')}\n\n"
+        text += f"  Name: {_escape_markdown(delivery.get('name', '-'))}\n"
+        text += f"  Phone: {_escape_markdown(delivery.get('phone', '-'))}\n"
+        text += f"  Email: {_escape_markdown(delivery.get('email', '-'))}\n"
+        text += f"  Address: {_escape_markdown(delivery.get('address', '-'))}\n\n"
     else:
         text += "🚚 Pickup (no delivery)\n\n"
 
     text += f"💰 **Total:** {order_data['total_price']} {currency}\n"
-    text += f"💳 **Payment:** {order_data['payment_method']}\n"
+    text += f"💳 **Payment:** {_escape_markdown(order_data['payment_method'])}\n"
 
     # Attempt to send the order — with error handling
     sent_ok = False
