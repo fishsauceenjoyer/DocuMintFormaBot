@@ -22,6 +22,33 @@ markers = [
     "slow: integration tests that take >1s",
     "fsm: tests related to FSM state transitions",
     "integration: tests that hit the real database or external API",
+    "handlers: tests for bot message/callback handlers",
+    "services: tests for service-layer code",
+    "utils: tests for utility modules",
+    "e2e: end-to-end flow tests",
 ]
 asyncio_mode = "auto"
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --cov=tests --cov-report=term-missing --cov-report=html"
+
+
+[tool.coverage.run]
+source = ["handlers", "services", "utils", "db", "templates", "fsm", "keyboards", "config.py"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if False:",
+    "except ImportError",
+    "except Exception as e",
+    "logging.getLogger",
+]
+show_missing = true
+skip_covered = false
