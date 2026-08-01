@@ -275,3 +275,76 @@ def clean_user_sessions():
     user_sessions.clear()
 
 
+# ── Integration-test database fixture ────────────────────────────────────
+
+
+@pytest.fixture
+def test_db(tmp_path, monkeypatch):
+    """Spin up a temporary SQLite database and apply all Alembic migrations.
+
+    Creates a file-based SQLite DB in the pytest ``tmp_path``, runs
+    ``alembic upgrade head`` so the schema matches production, then patches
+    ``handlers.order.SessionLocal`` (and ``db.crud.SessionLocal``) to use a
+    session factory bound to the test database.
+
+    Yields a ``sessionmaker`` so tests can open their own sessions to assert
+    on the persisted data.
+    """
+    import importlib
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    db_file = tmp_path / "integration_test.db"
+    db_url = f"sqlite:///{db_file}"
+
+    # Patch DATABASE_URL *before* reloading db.crud so the module-level
+    # engine/session factory point at the test database.
+    import config
+
+    monkeypatch.setattr(config, "DATABASE_URL", db_url)
+
+    # Reload db.crud so its module-level engine picks up the new URL.
+    import db.crud as crud_module
+
+    importlib.reload(crud_module)
+
+    # Run Alembic migrations against the test database.
+    # migrations/env.py reads config.DATABASE_URL at execution time, so the
+    # monkeypatched value is used.
+    from alembic import command
+    from alembic.config import Config as AlembicConfig
+
+    alembic_cfg = AlembicConfig("alembic.ini")
+    alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+    command.upgrade(alembic_cfg, "head")
+
+    # Build a session factory bound to the freshly-migrated test database.
+    engine = create_engine(db_url)
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    # Patch the SessionLocal used by the order handler (imported at module
+    # load time) so DB writes go to the test database.
+    import handlers.order as order_module
+
+    monkeypatch.setattr(order_module, "SessionLocal", TestSessionLocal)
+
+    # Also patch db.crud.SessionLocal for any code that imports it lazily.
+    monkeypatch.setattr(crud_module, "SessionLocal", TestSessionLocal)
+
+    try:
+        yield TestSessionLocal
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def clean_admin_orders():
+    """Clear the in-memory admin orders dict before and after each test."""
+    from handlers.admin import orders
+
+    orders.clear()
+    yield
+    orders.clear()
+
+
