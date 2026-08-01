@@ -79,11 +79,16 @@ async def process_fast_order(message: Message, state: FSMContext):
         await message.answer(i18n.get("error_bot_error", language=lang))
         return
 
+    from utils.sanitizer import sanitize_for_telegram
+
+    safe_message = sanitize_for_telegram(message.text)
+    safe_username = sanitize_for_telegram(user.username or "unknown")
+
     text = (
         f"⚡ **FAST ORDER (Repeat customer)**\n\n"
-        f"👤 Client: @{user.username} (ID: {user_id})\n"
+        f"👤 Client: @{safe_username} (ID: {user_id})\n"
         f"📝 Client message:\n\n"
-        f"```\n{message.text}\n```\n\n"
+        f"```\n{safe_message}\n```\n\n"
         f"⚠️ Unpaid — requires manual check by manager"
     )
 
