@@ -213,6 +213,14 @@ def validate_field_value(
     # Sanitize
     cleaned = sanitize_text(value)
 
+    # Re-check after sanitization: whitespace-only input becomes empty
+    if not cleaned:
+        return ValidationResult(
+            is_valid=False,
+            error_message="❌ Поле не может быть пустым.",
+            sanitized_value="",
+        )
+
     # Check length
     if max_length is None:
         max_length = _get_default_max_length(field_type)
@@ -247,16 +255,14 @@ def validate_field_value(
                 error_message=f"❌ Год должен быть между 1900 и {current_year}.",
                 sanitized_value=cleaned,
             )
-        if month < 1 or month > 12:
+        # Calendar correctness first: catches 31.02, 30.02, 29.02 non-leap,
+        # 00.xx, 32.xx, etc. in one check via datetime.strptime.
+        try:
+            datetime.strptime(cleaned, "%d.%m.%Y")
+        except ValueError:
             return ValidationResult(
                 is_valid=False,
-                error_message="❌ Месяц должен быть от 1 до 12.",
-                sanitized_value=cleaned,
-            )
-        if day < 1 or day > 31:
-            return ValidationResult(
-                is_valid=False,
-                error_message="❌ День должен быть от 1 до 31.",
+                error_message="❌ Такой даты не существует. Проверьте день и месяц.",
                 sanitized_value=cleaned,
             )
 

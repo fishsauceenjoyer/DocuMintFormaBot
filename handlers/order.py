@@ -232,7 +232,20 @@ async def process_quantity(callback: CallbackQuery, state: FSMContext):
         await callback.answer("❌ Error processing request")
         return
 
-    quantity = int(callback.data.split("_")[1])
+    try:
+        quantity = int(callback.data.split("_")[1])
+    except (ValueError, IndexError):
+        await callback.answer("❌ Некорректное количество")
+        return
+
+    # Boundary check: the keyboard only offers 1–5, but guard against
+    # crafted callback_data (qty_0, qty_6, qty_99, …).
+    if quantity < 1 or quantity > 5:
+        await callback.answer(
+            "❌ Можно заказать от 1 до 5 документов.", show_alert=True
+        )
+        return
+
     user_id = callback.from_user.id
     session = await get_user_session(user_id)
 
@@ -360,11 +373,15 @@ async def _notify_admin_validation_error(
             return
 
         username = message.from_user.username if message.from_user else "unknown"
+        from utils.sanitizer import sanitize_for_telegram
+
+        # Only user-supplied values need sanitization; field_name / field_type
+        # are internal constants and stay readable in the notification.
         text = (
             f"⚠️ **Ошибка валидации поля**\n\n"
-            f"👤 Клиент: @{username} (ID: {user_id})\n"
+            f"👤 Клиент: @{sanitize_for_telegram(username)} (ID: {user_id})\n"
             f"📋 Поле: `{field_name}` (тип: {field_type})\n"
-            f"💬 Введено: `{raw_value[:200]}`\n"
+            f"💬 Введено: `{sanitize_for_telegram(raw_value[:200])}`\n"
             f"❌ Ошибка: {error_message}"
         )
         await message.bot.send_message(
@@ -539,11 +556,16 @@ async def save_delivery(message: Message, state: FSMContext):
         await message.answer(i18n.get("delivery_format_error", language=lang))
         return
 
+    # Cap delivery values to the database column sizes. Markdown escaping is
+    # applied later in utils.router when the message is composed for the
+    # manager; the raw values must stay intact in the database.
+    from utils.sanitizer import truncate_for_storage
+
     delivery = {
-        "name": lines[0].strip() if len(lines) > 0 else "-",
-        "phone": lines[1].strip() if len(lines) > 1 else "-",
-        "email": lines[2].strip() if len(lines) > 2 else "-",
-        "address": lines[3].strip() if len(lines) > 3 else "-",
+        "name": truncate_for_storage(lines[0].strip() if len(lines) > 0 else "-"),
+        "phone": truncate_for_storage(lines[1].strip() if len(lines) > 1 else "-"),
+        "email": truncate_for_storage(lines[2].strip() if len(lines) > 2 else "-"),
+        "address": truncate_for_storage(lines[3].strip() if len(lines) > 3 else "-"),
     }
     session["delivery"] = delivery
 
