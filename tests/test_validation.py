@@ -208,12 +208,14 @@ class TestValidateFieldValue:
     def test_date_month_out_of_range(self):
         result = validate_field_value("01.13.2000", "date", field_name="birth_date")
         assert result.is_valid is False
-        assert "Месяц" in result.error_message
+        # Calendar check catches impossible months with a unified message
+        assert "не существует" in result.error_message
 
     def test_date_day_out_of_range(self):
         result = validate_field_value("32.01.2000", "date", field_name="birth_date")
         assert result.is_valid is False
-        assert "День" in result.error_message
+        # Calendar check catches impossible days with a unified message
+        assert "не существует" in result.error_message
 
     def test_valid_email(self):
         result = validate_field_value("user@example.com", "email", field_name="email")
@@ -418,3 +420,206 @@ class TestFieldConstructor:
         hint = f.type_hint()
         assert "код страны" in hint
         assert "PL" in hint or "RU" in hint
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Equivalence-class & boundary-value parametrized tests
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestTextEquivalenceClasses:
+    """Equivalence classes and boundary values for ``text`` fields."""
+
+    @pytest.mark.parametrize("value", [
+        "John Doe",            # Latin name
+        "Иван Петров",         # Cyrillic name
+        "Olena Romenko",       # Two words
+        "A",                   # Single char (min boundary)
+        "A" * 255,             # Max boundary
+    ])
+    def test_valid_text_accepted(self, value):
+        result = validate_field_value(value, "text", field_name="full_name")
+        assert result.is_valid is True
+
+    @pytest.mark.parametrize("value,expected_error", [
+        ("", "пустым"),                              # Empty
+        ("A" * 256, "Максимум"),                     # Over max length
+        ("   ", "пустым"),                           # Whitespace only
+        ("Robert'); DROP TABLE users;--", "недопустимые символы"),  # SQL injection
+        ("<script>alert(1)</script>", "недопустимые символы"),      # XSS
+    ])
+    def test_invalid_text_rejected(self, value, expected_error):
+        result = validate_field_value(value, "text", field_name="full_name")
+        assert result.is_valid is False
+        assert expected_error in result.error_message
+
+
+class TestDateEquivalenceClasses:
+    """Equivalence classes and boundary values for ``date`` fields."""
+
+    @pytest.mark.parametrize("value", [
+        "01.01.2000",    # Valid: start of year
+        "31.12.2025",    # Valid: end of year
+        "29.02.2000",    # Valid: leap year Feb 29
+        "28.02.2001",    # Valid: non-leap year Feb 28
+        "15.06.1990",    # Valid: mid-year
+    ])
+    def test_valid_date_accepted(self, value):
+        result = validate_field_value(value, "date", field_name="birth_date")
+        assert result.is_valid is True
+
+    @pytest.mark.parametrize("value,expected_error", [
+        ("", "пустым"),                       # Empty
+        ("32.01.2000", "не существует"),      # Day > 31
+        ("00.01.2000", "не существует"),      # Day = 0
+        ("01.13.2000", "не существует"),      # Month > 12 (calendar check)
+        ("01.00.2000", "не существует"),      # Month = 0 (calendar check)
+        ("01.01.1899", "Год"),                # Year < 1900
+        ("2024-12-31", "формат"),             # Wrong format (ISO)
+        ("31/12/2024", "формат"),             # Wrong separator
+        ("31.02.2000", "не существует"),      # Feb 31 (impossible)
+        ("30.02.2001", "не существует"),      # Feb 30 (impossible, non-leap)
+        ("29.02.2001", "не существует"),      # Feb 29 non-leap year
+    ])
+    def test_invalid_date_rejected(self, value, expected_error):
+        result = validate_field_value(value, "date", field_name="birth_date")
+        assert result.is_valid is False
+        assert expected_error in result.error_message
+
+
+class TestEmailEquivalenceClasses:
+    """Equivalence classes and boundary values for ``email`` fields."""
+
+    @pytest.mark.parametrize("value", [
+        "user@example.com",
+        "test.user@domain.org",
+        "a@b.co",                # Minimal valid
+        "user+tag@mail.com",     # Plus addressing
+    ])
+    def test_valid_email_accepted(self, value):
+        result = validate_field_value(value, "email", field_name="email")
+        assert result.is_valid is True
+
+    @pytest.mark.parametrize("value,expected_error", [
+        ("", "пустым"),                  # Empty
+        ("userexample.com", "email"),    # No @
+        ("user@", "email"),              # No domain
+        ("@domain.com", "email"),        # No local part
+        ("user@domain", "email"),        # No TLD
+    ])
+    def test_invalid_email_rejected(self, value, expected_error):
+        result = validate_field_value(value, "email", field_name="email")
+        assert result.is_valid is False
+        assert expected_error in result.error_message
+
+
+class TestPhoneEquivalenceClasses:
+    """Equivalence classes and boundary values for ``phone`` fields."""
+
+    @pytest.mark.parametrize("value", [
+        "+48123456789",            # Minimal valid (11 chars)
+        "+48 123-456-789",         # With spaces and dashes
+        "+1 (555) 123-4567",       # International format
+        "123456",                  # 6 digits (min boundary)
+    ])
+    def test_valid_phone_accepted(self, value):
+        result = validate_field_value(value, "phone", field_name="phone")
+        assert result.is_valid is True
+
+    @pytest.mark.parametrize("value,expected_error", [
+        ("", "пустым"),            # Empty
+        ("123", "телефон"),        # Too short (3 chars)
+        ("12345", "телефон"),      # Too short (5 chars)
+        ("abc", "телефон"),        # Non-numeric
+    ])
+    def test_invalid_phone_rejected(self, value, expected_error):
+        result = validate_field_value(value, "phone", field_name="phone")
+        assert result.is_valid is False
+        assert expected_error in result.error_message
+
+
+class TestPassportNumberEquivalenceClasses:
+    """Equivalence classes and boundary values for ``passport_number`` fields."""
+
+    @pytest.mark.parametrize("value", [
+        "FB363261",              # Standard
+        "AB-123.45 / 678",       # With allowed separators
+        "ABC",                   # Min boundary (3 chars)
+        "A" * 30,                # Max boundary (30 chars)
+        "fb363261",              # Lowercase (normalized to upper)
+    ])
+    def test_valid_passport_accepted(self, value):
+        result = validate_field_value(value, "passport_number", field_name="passport")
+        assert result.is_valid is True
+
+    @pytest.mark.parametrize("value,expected_error", [
+        ("", "пустым"),          # Empty
+        ("AB", "от 3"),          # Too short (2 chars)
+        ("A" * 31, "от 3"),      # Too long (31 chars)
+        ("AB@123", "формат"),    # Invalid char
+    ])
+    def test_invalid_passport_rejected(self, value, expected_error):
+        result = validate_field_value(value, "passport_number", field_name="passport")
+        assert result.is_valid is False
+        assert expected_error in result.error_message
+
+
+class TestCountryCodeEquivalenceClasses:
+    """Equivalence classes and boundary values for ``country_code`` fields."""
+
+    @pytest.mark.parametrize("value", [
+        "PL",    # Poland
+        "RU",    # Russia
+        "RS",    # Serbia
+        "AM",    # Armenia
+        "pl",    # Lowercase (normalized)
+    ])
+    def test_valid_country_code_accepted(self, value):
+        result = validate_field_value(value, "country_code", field_name="country")
+        assert result.is_valid is True
+
+    @pytest.mark.parametrize("value,expected_error", [
+        ("", "пустым"),          # Empty
+        ("XX", "страны"),        # Not in allowed list
+        ("POL", "страны"),       # Wrong length (3 chars)
+        ("P", "страны"),         # Wrong length (1 char)
+    ])
+    def test_invalid_country_code_rejected(self, value, expected_error):
+        result = validate_field_value(value, "country_code", field_name="country")
+        assert result.is_valid is False
+        assert expected_error in result.error_message
+
+
+class TestQuantityBoundaryValues:
+    """Boundary values for document quantity (1–5) at the FSM level."""
+
+    @pytest.mark.parametrize("qty_data,should_accept", [
+        ("qty_1", True),    # Min boundary
+        ("qty_2", True),
+        ("qty_3", True),
+        ("qty_4", True),
+        ("qty_5", True),    # Max boundary
+        ("qty_0", False),   # Below min
+        ("qty_6", False),   # Above max
+        ("qty_99", False),  # Far above max
+    ])
+    @pytest.mark.asyncio
+    async def test_quantity_boundary(self, qty_data, should_accept, mock_fsm, clean_user_sessions):
+        from conftest import MockCallback  # type: ignore[import-not-found]
+        from handlers.order import process_document_choice, process_quantity
+
+        # Set up session by choosing a document first
+        cb_doc = MockCallback(data="doc_visa")
+        await process_document_choice(cb_doc, mock_fsm)
+
+        cb_qty = MockCallback(data=qty_data, user_id=123)
+        await process_quantity(cb_qty, mock_fsm)
+
+        if should_accept:
+            assert mock_fsm._data.get("state") is not None
+            assert cb_qty._answered is True
+        else:
+            # Out-of-range quantities are rejected via callback.answer()
+            assert cb_qty._answered is True
+            assert cb_qty._show_alert is True
+            assert "1 до 5" in (cb_qty._answered_text or "")
