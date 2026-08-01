@@ -232,7 +232,20 @@ async def process_quantity(callback: CallbackQuery, state: FSMContext):
         await callback.answer("❌ Error processing request")
         return
 
-    quantity = int(callback.data.split("_")[1])
+    try:
+        quantity = int(callback.data.split("_")[1])
+    except (ValueError, IndexError):
+        await callback.answer("❌ Некорректное количество")
+        return
+
+    # Boundary check: the keyboard only offers 1–5, but guard against
+    # crafted callback_data (qty_0, qty_6, qty_99, …).
+    if quantity < 1 or quantity > 5:
+        await callback.answer(
+            "❌ Можно заказать от 1 до 5 документов.", show_alert=True
+        )
+        return
+
     user_id = callback.from_user.id
     session = await get_user_session(user_id)
 
