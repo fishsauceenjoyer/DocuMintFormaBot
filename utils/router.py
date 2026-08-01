@@ -11,7 +11,6 @@ MANAGER_ID chat (configured via ``config.MANAGER_ID``).
 
 import json
 import logging
-import re
 import traceback
 from typing import Optional
 
@@ -19,6 +18,7 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
 
 from config import MANAGER_ID, ROUTING
+from utils.sanitizer import sanitize_for_telegram
 
 # Import admin's order storage to save user_id for later client notifications
 # This is a bridging fix; in production, use database
@@ -30,16 +30,13 @@ logger = logging.getLogger(__name__)
 
 
 def _escape_markdown(text: str) -> str:
-    """Escape Markdown special characters to prevent parse errors.
+    """Escape Markdown special characters to prevent parse errors and link injection.
 
-    Telegram's MarkdownV2 requires escaping: _ * [ ] ( ) ~ ` > # + - = | { } . !
-    For regular Markdown mode, the main problematic chars are: _ * ` [ ]
-    This function escapes the most common ones to avoid "can't find end of entity" errors.
+    Backwards-compatible wrapper around :func:`utils.sanitizer.sanitize_for_telegram`.
+    Escapes *all* Markdown special characters (``_ * [ ] ( ) ~ ` > # + - = | { } . !``)
+    so user input can never become a clickable link or break message formatting.
     """
-    # Escape characters that are problematic in Telegram Markdown
-    # Both opening and closing brackets need escaping to avoid parse errors
-    escape_chars = r"_*`[]"
-    return re.sub(f"([{re.escape(escape_chars)}])", r"\\\1", text)
+    return sanitize_for_telegram(text)
 
 
 async def _safe_send(
