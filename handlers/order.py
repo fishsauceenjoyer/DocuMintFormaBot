@@ -324,21 +324,28 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
     # Build summary of already-entered fields for the current document
     entered_fields = session.get("temp_item_data", {})
     summary_lines = []
-    for f in fields:
+    for i, f in enumerate(fields):
         if f.id in entered_fields:
-            summary_lines.append(f"  ✅ {f.prompt}: {entered_fields[f.id]}")
-        elif fields.index(f) < current_index:
-            summary_lines.append(f"  ✅ {f.prompt}: {session['temp_item_data'].get(f.id, '✓')}")
+            summary_lines.append(f"  ✅ {i+1}. {f.prompt}: {entered_fields[f.id]}")
+        elif i < current_index:
+            # Field was skipped or not yet filled
+            summary_lines.append(f"  ⏭ {i+1}. {f.prompt}: (пропущено)")
     summary_text = ""
     if summary_lines:
-        summary_text = "\n" + "\n".join(summary_lines) + "\n"
+        summary_text = "\n📋 *Заполнено:*\n" + "\n".join(summary_lines) + "\n"
 
+    # Build current field indicator with visual progress bar
+    field_indicator = f"📝 Поле {current_index + 1} из {len(fields)}"
+    progress_bar = "█" * (current_index + 1) + "░" * (len(fields) - current_index - 1)
+    
     await message.answer(
-        f"{progress_str}{summary_text}\n\n"
-        f"📝 *Поле {current_index + 1}/{len(fields)}*\n\n"
+        f"{progress_str}\n"
+        f"{summary_text}\n"
+        f"\n"
+        f"{field_indicator} [{progress_bar}]\n\n"
         f"{prompt}{optional_note}\n\n"
         f"💡 *Подсказка:* {type_hint}\n\n"
-        "Send your answer in one message."
+        "Отправьте ответ одним сообщением."
     )
 
     await state.update_data(current_field_index=current_index)
