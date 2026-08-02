@@ -5,6 +5,24 @@ import pytest
 from services import pricing, order_builder, order_manager
 
 
+@pytest.fixture
+def clean_order_manager_db(monkeypatch):
+    """Patch SessionLocal in order_manager to use a clean in-memory DB."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from db.models import Base
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    TestSession = sessionmaker(bind=engine)
+
+    import services.order_manager as om
+
+    monkeypatch.setattr(om, "SessionLocal", TestSession)
+    return TestSession
+
+
 class TestPricing:
     def test_currency_symbol_eur(self):
         assert pricing.currency_symbol("EUR") == "€"
@@ -85,7 +103,7 @@ class TestOrderBuilder:
 
 class TestOrderManager:
     @pytest.mark.asyncio
-    async def test_create_and_get_order(self):
+    async def test_create_and_get_order(self, clean_order_manager_db):
         manager = order_manager.OrderManager()
         order_data = {
             "order_id": "ORDER_UNIT_1",
@@ -114,7 +132,7 @@ class TestOrderManager:
         assert fetched.id == order.id
 
     @pytest.mark.asyncio
-    async def test_update_status_changes_status(self):
+    async def test_update_status_changes_status(self, clean_order_manager_db):
         manager = order_manager.OrderManager()
         order_data = {
             "order_id": "ORDER_UNIT_2",
