@@ -234,16 +234,16 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
     Клавиатура главного меню бота.
 
     Предлагает три основных действия:
-        - "Новый заказ" — начать оформление заказа
-        - "Я постоянный клиент" — быстрый заказ без обработки
-        - "Связь с менеджером" — запросить помощь менеджера
+        - "▶️ Начать новый заказ" — начать оформление заказа (явный призыв к действию)
+        - "👤 Я постоянный клиент" — быстрый заказ без обработки
+        - "🆘 Связь с менеджером" — запросить помощь менеджера
 
     Returns:
         InlineKeyboardMarkup с кнопками главного меню.
     """
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📋 Новый заказ", callback_data="new_order")],
+            [InlineKeyboardButton(text="▶️ Начать новый заказ", callback_data="new_order")],
             [
                 InlineKeyboardButton(
                     text="👤 Я постоянный клиент", callback_data="fast_order"
