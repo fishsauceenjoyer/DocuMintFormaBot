@@ -22,7 +22,7 @@ jobs:
           enable-cache: true # Включаем кэширование для молниеносной сборки
 
       - name: 📦 Синхронизация зависимостей
-        run: uv sync --frozen
+        run: uv sync
 
       - name: 🧼 Проверка линтерами (Static Code Analysis)
         run: |
@@ -49,7 +49,7 @@ jobs:
           enable-cache: true
 
       - name: 📦 Синхронизация зависимостей
-        run: uv sync --frozen
+        run: uv sync
 
       - name: 🟢 Запуск тестов и проверка покрытия (Coverage)
         run: |
