@@ -33,7 +33,7 @@ Replace these with real screenshots when you have a running bot instance.
 ## Quality Pipeline
 
 See [README.md](../README.md#quality-pipeline-cicd) for the full Quality Gates
-description. In short: every push to `main` and every PR runs `black`, `flake8`,
+description. In short: every push to `feat/payment-methods-rename` and every PR runs `black`, `flake8`,
 `mypy`, `bandit`, and `pytest` in sequence. The test job only starts if the
 quality/security job passes.
 
