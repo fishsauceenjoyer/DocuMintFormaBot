@@ -60,7 +60,7 @@ class MockMessage:
         self.message_id = message_id
         self.chat = MockChat(chat_id=chat_id)
         self.from_user = MockUser(user_id=user_id)
-        self.bot = MockBot()
+        self.bot: Any = MockBot()
         self.photo: Optional[List[Any]] = None
         self.document: Optional[Any] = None
         self._edited_text: Optional[str] = None
@@ -82,8 +82,8 @@ class MockCallback:
         self.from_user = MockUser(user_id=user_id)
         self.chat_instance = f"instance_{user_id}"
         self.data = data
-        self.message = MockMessage(chat_id=user_id) if message_accessible else MockInaccessibleMessage()
-        self.bot = MockBot()
+        self.message: Any = MockMessage(chat_id=user_id) if message_accessible else MockInaccessibleMessage()
+        self.bot: Any = MockBot()
         self._answered: bool = False
         self._answered_text: Optional[str] = None
         self._show_alert: Optional[bool] = None
@@ -120,7 +120,7 @@ class MockFSMContext:
 class MockUser:
     def __init__(self, user_id=123, username="testuser", language_code=None):
         self.id = user_id
-        self.username = username
+        self.username: Optional[str] = username
         self.first_name = "Test"
         self.last_name = None
         self.language_code = language_code

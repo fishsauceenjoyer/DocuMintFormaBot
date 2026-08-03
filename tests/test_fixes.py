@@ -61,6 +61,7 @@ async def test_process_document_choice_criminal_record_check(monkeypatch):
     # to send a message which we can't fully mock here, but we can check
     # that get_template was called with the correct key.
     # Instead, let's directly test the extraction logic:
+    assert callback.data is not None
     parts = callback.data.split("_", 1)
     assert len(parts) == 2
     assert parts[0] == "doc"

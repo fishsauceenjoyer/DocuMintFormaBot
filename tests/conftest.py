@@ -167,6 +167,8 @@ class MockBot:
 class MockMessage(Message):
     """Mock Message subclass that captures edited / answered text."""
 
+    bot: Any  # type: ignore[assignment]  # injected at runtime by aiogram
+
     def __init__(self, text=None, message_id=1, chat_id=123, user_id=123):
         chat = Chat(id=chat_id, type="private")
         from_user = User(
@@ -194,6 +196,9 @@ class MockMessage(Message):
 
 class MockCallback(CallbackQuery):
     """CallbackQuery test double that stores callback answers locally."""
+
+    message: Any  # type: ignore[assignment]  # may be None/duck-typed in tests
+    bot: Any  # type: ignore[assignment]  # injected at runtime by aiogram
 
     def __init__(self, data=None, message_accessible=True, user_id=123):
         user = User(id=user_id, is_bot=False, first_name="Test", username="testuser")
