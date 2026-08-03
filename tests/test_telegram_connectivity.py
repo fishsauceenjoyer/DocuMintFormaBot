@@ -36,8 +36,7 @@ Usage
 import logging
 
 import pytest
-
-from conftest import _telegram_api_reachable, _bot_token_available
+from conftest import _bot_token_available, _telegram_api_reachable
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +84,9 @@ def test_telegram_api_dns_resolves() -> None:
 
 
 @pytest.mark.asyncio
-async def test_telegram_getme(request: pytest.FixtureRequest, telegram_available: bool) -> None:
+async def test_telegram_getme(
+    request: pytest.FixtureRequest, telegram_available: bool
+) -> None:
     """Optional smoke test: call ``getMe`` on the real Bot API.
 
     This test runs **only** when ``--with-real-api`` is passed on the

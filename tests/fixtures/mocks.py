@@ -19,23 +19,35 @@ class MockBot:
         self.id = 12345
 
     async def send_message(self, chat_id, text, **kwargs):
-        self.sent_messages.append({
-            "chat_id": chat_id, "text": text, "kwargs": kwargs,
-        })
+        self.sent_messages.append(
+            {
+                "chat_id": chat_id,
+                "text": text,
+                "kwargs": kwargs,
+            }
+        )
         return None
 
     async def send_photo(self, chat_id, photo, caption=None, **kwargs):
-        self.sent_photos.append({
-            "chat_id": chat_id, "photo": photo,
-            "caption": caption, "kwargs": kwargs,
-        })
+        self.sent_photos.append(
+            {
+                "chat_id": chat_id,
+                "photo": photo,
+                "caption": caption,
+                "kwargs": kwargs,
+            }
+        )
         return True
 
     async def send_document(self, chat_id, document, caption=None, **kwargs):
-        self.sent_documents.append({
-            "chat_id": chat_id, "document": document,
-            "caption": caption, "kwargs": kwargs,
-        })
+        self.sent_documents.append(
+            {
+                "chat_id": chat_id,
+                "document": document,
+                "caption": caption,
+                "kwargs": kwargs,
+            }
+        )
         return True
 
 
@@ -82,7 +94,11 @@ class MockCallback:
         self.from_user = MockUser(user_id=user_id)
         self.chat_instance = f"instance_{user_id}"
         self.data = data
-        self.message: Any = MockMessage(chat_id=user_id) if message_accessible else MockInaccessibleMessage()
+        self.message: Any = (
+            MockMessage(chat_id=user_id)
+            if message_accessible
+            else MockInaccessibleMessage()
+        )
         self.bot: Any = MockBot()
         self._answered: bool = False
         self._answered_text: Optional[str] = None
