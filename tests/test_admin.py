@@ -16,14 +16,21 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import pytest
 from unittest.mock import MagicMock, patch
 
-from fsm.states import AdminState
-from tests.fixtures.mocks import MockBot, MockCallback, MockFSMContext, MockMessage, MockPhoto
+import pytest
 
+from fsm.states import AdminState
+from tests.fixtures.mocks import (
+    MockBot,
+    MockCallback,
+    MockFSMContext,
+    MockMessage,
+    MockPhoto,
+)
 
 # ── Helper: admin message ──────────────────────────────────────────────
+
 
 def _admin_message(text: str | None = None, chat_id: int = 999) -> MockMessage:
     """Create a MockMessage with admin username."""
@@ -43,6 +50,7 @@ def _non_admin_message(text: str, chat_id: int = 123) -> MockMessage:
 
 # ── /send_doc command ──────────────────────────────────────────────────
 
+
 class TestCmdSendDoc:
     """Tests for the /send_doc command handler."""
 
@@ -50,6 +58,7 @@ class TestCmdSendDoc:
     async def test_admin_can_start_send_doc(self):
         """Verify admin receives instruction and FSM state is set."""
         from handlers.admin import cmd_send_doc
+
         message = _admin_message("/send_doc")
         state = MockFSMContext()
 
@@ -66,6 +75,7 @@ class TestCmdSendDoc:
     async def test_non_admin_rejected_from_send_doc(self):
         """Verify non-admin gets rejected."""
         from handlers.admin import cmd_send_doc
+
         message = _non_admin_message("/send_doc")
         state = MockFSMContext()
 
@@ -79,6 +89,7 @@ class TestCmdSendDoc:
 
 # ── callback_send_doc ──────────────────────────────────────────────────
 
+
 class TestCallbackSendDoc:
     """Tests for the 'send_doc_ORDER' callback handler."""
 
@@ -86,6 +97,7 @@ class TestCallbackSendDoc:
     async def test_callback_send_doc_sets_state(self):
         """Verify callback sets FSM state and stores order_id."""
         from handlers.admin import callback_send_doc
+
         callback = MockCallback(data="send_doc_ORDER_TEST123")
         callback.from_user.username = "admin"
         state = MockFSMContext()
@@ -102,6 +114,7 @@ class TestCallbackSendDoc:
     async def test_callback_send_doc_rejects_non_admin(self):
         """Verify non-admin gets alert."""
         from handlers.admin import callback_send_doc
+
         callback = MockCallback(data="send_doc_ORDER_TEST123")
         callback.from_user.username = "attacker"
         state = MockFSMContext()
@@ -116,6 +129,7 @@ class TestCallbackSendDoc:
 
 # ── process_document_file ──────────────────────────────────────────────
 
+
 class TestProcessDocumentFile:
     """Tests for uploading a document file as admin."""
 
@@ -123,6 +137,7 @@ class TestProcessDocumentFile:
     async def test_process_photo_file(self):
         """Verify admin can upload a photo as document."""
         from handlers.admin import process_document_file
+
         message = _admin_message(None)
         message.photo = [MockPhoto(file_id="photo_file_id")]
         state = MockFSMContext()
@@ -141,6 +156,7 @@ class TestProcessDocumentFile:
     async def test_process_document_file(self):
         """Verify admin can upload a document file."""
         from handlers.admin import process_document_file
+
         message = _admin_message(None)
         message.document = MagicMock()
         message.document.file_id = "doc_file_id"
@@ -160,6 +176,7 @@ class TestProcessDocumentFile:
     async def test_process_no_file_rejected(self):
         """Verify non-file message is rejected."""
         from handlers.admin import process_document_file
+
         message = _admin_message("just text")
         state = MockFSMContext()
         state._data["order_id"] = "ORDER_TEST123"
@@ -172,6 +189,7 @@ class TestProcessDocumentFile:
     async def test_process_unknown_order(self):
         """Verify unknown order shows error."""
         from handlers.admin import process_document_file
+
         message = _admin_message(None)
         message.photo = [MockPhoto(file_id="photo_file_id")]
         state = MockFSMContext()
@@ -185,6 +203,7 @@ class TestProcessDocumentFile:
 
 # ── /track command ─────────────────────────────────────────────────────
 
+
 class TestCmdTrack:
     """Tests for the /track command handler."""
 
@@ -192,6 +211,7 @@ class TestCmdTrack:
     async def test_track_with_valid_params(self):
         """Verify /track with order and tracking number works."""
         from handlers.admin import cmd_track
+
         message = _admin_message("/track ORDER_TEST123 TRACK123")
         state = MockFSMContext()
 
@@ -204,6 +224,7 @@ class TestCmdTrack:
     async def test_track_without_params_shows_help(self):
         """Verify /track without params shows format help."""
         from handlers.admin import cmd_track
+
         message = _admin_message("/track")
         state = MockFSMContext()
 
@@ -215,6 +236,7 @@ class TestCmdTrack:
 
 # ── callback_send_track ────────────────────────────────────────────────
 
+
 class TestCallbackSendTrack:
     """Tests for the 'send_track_ORDER' callback handler."""
 
@@ -222,6 +244,7 @@ class TestCallbackSendTrack:
     async def test_callback_send_track_sets_state(self):
         """Verify callback sets FSM state for tracking number."""
         from handlers.admin import callback_send_track
+
         callback = MockCallback(data="send_track_ORDER_TEST123")
         callback.from_user.username = "admin"
         state = MockFSMContext()
@@ -238,6 +261,7 @@ class TestCallbackSendTrack:
     async def test_callback_send_track_rejects_non_admin(self):
         """Verify non-admin gets alert."""
         from handlers.admin import callback_send_track
+
         callback = MockCallback(data="send_track_ORDER_TEST123")
         callback.from_user.username = "attacker"
         state = MockFSMContext()
@@ -252,6 +276,7 @@ class TestCallbackSendTrack:
 
 # ── process_tracking_number ────────────────────────────────────────────
 
+
 class TestProcessTrackingNumber:
     """Tests for entering a tracking number as admin."""
 
@@ -259,6 +284,7 @@ class TestProcessTrackingNumber:
     async def test_process_tracking_number_sends_to_client(self):
         """Verify tracking number is sent to the client."""
         from handlers.admin import process_tracking_number
+
         message = _admin_message("TRACK123")
         state = MockFSMContext()
         state._data["order_id"] = "ORDER_TEST123"
@@ -276,6 +302,7 @@ class TestProcessTrackingNumber:
     async def test_process_tracking_unknown_order(self):
         """Verify unknown order shows error."""
         from handlers.admin import process_tracking_number
+
         message = _admin_message("TRACK123")
         state = MockFSMContext()
         state._data["order_id"] = "ORDER_UNKNOWN"
@@ -288,6 +315,7 @@ class TestProcessTrackingNumber:
 
 # ── callback_order_done ────────────────────────────────────────────────
 
+
 class TestCallbackOrderDone:
     """Tests for the 'order_done_ORDER' callback handler."""
 
@@ -295,6 +323,7 @@ class TestCallbackOrderDone:
     async def test_order_done_updates_status(self):
         """Verify order status is updated to completed."""
         from handlers.admin import callback_order_done
+
         callback = MockCallback(data="order_done_ORDER_TEST123")
         callback.from_user.username = "admin"
         state = MockFSMContext()
@@ -313,6 +342,7 @@ class TestCallbackOrderDone:
     async def test_order_done_rejects_non_admin(self):
         """Verify non-admin cannot mark order as done."""
         from handlers.admin import callback_order_done
+
         callback = MockCallback(data="order_done_ORDER_TEST123")
         callback.from_user.username = "attacker"
         state = MockFSMContext()
@@ -327,6 +357,7 @@ class TestCallbackOrderDone:
 
 # ── /orders command ────────────────────────────────────────────────────
 
+
 class TestCmdOrders:
     """Tests for the /orders command handler."""
 
@@ -334,6 +365,7 @@ class TestCmdOrders:
     async def test_orders_shows_list(self):
         """Verify /orders returns formatted order list."""
         from handlers.admin import cmd_orders_list
+
         message = _admin_message("/orders")
         state = MockFSMContext()
 
@@ -348,7 +380,8 @@ class TestCmdOrders:
         mock_order_2.total_price = 200
 
         mock_db.query.return_value.order_by.return_value.all.return_value = [
-            mock_order_1, mock_order_2,
+            mock_order_1,
+            mock_order_2,
         ]
 
         with patch("utils.auth.is_admin", return_value=True):
@@ -364,6 +397,7 @@ class TestCmdOrders:
     async def test_orders_empty(self):
         """Verify /orders shows empty message when no orders."""
         from handlers.admin import cmd_orders_list
+
         message = _admin_message("/orders")
         state = MockFSMContext()
 
@@ -379,6 +413,7 @@ class TestCmdOrders:
 
 # ── /stats command ─────────────────────────────────────────────────────
 
+
 class TestCmdStats:
     """Tests for the /stats command handler."""
 
@@ -386,6 +421,7 @@ class TestCmdStats:
     async def test_stats_shows_counts(self):
         """Verify /stats returns formatted statistics."""
         from handlers.admin import cmd_stats
+
         message = _admin_message("/stats")
 
         mock_db = MagicMock()
@@ -401,6 +437,7 @@ class TestCmdStats:
 
 # ── /help_admin command ────────────────────────────────────────────────
 
+
 class TestCmdHelpAdmin:
     """Tests for the /help_admin command handler."""
 
@@ -408,6 +445,7 @@ class TestCmdHelpAdmin:
     async def test_help_admin_shows_commands(self):
         """Verify /help_admin shows available commands."""
         from handlers.admin import cmd_help_admin
+
         message = _admin_message("/help_admin")
 
         with patch("utils.auth.is_admin", return_value=True):
@@ -421,25 +459,30 @@ class TestCmdHelpAdmin:
 
 # ── extract_order_id utility ───────────────────────────────────────────
 
+
 class TestExtractOrderId:
     """Tests for the extract_order_id helper function."""
 
     def test_extracts_full_order_id(self):
         from handlers.admin import extract_order_id
+
         result = extract_order_id("ORDER_ABC123")
         assert result == "ABC123"
 
     def test_extracts_from_text(self):
         from handlers.admin import extract_order_id
+
         result = extract_order_id("Some text ORDER_XYZ789 more text")
         assert result == "XYZ789"
 
     def test_returns_none_for_no_match(self):
         from handlers.admin import extract_order_id
+
         result = extract_order_id("No order here")
         assert result is None
 
     def test_case_insensitive(self):
         from handlers.admin import extract_order_id
+
         result = extract_order_id("order_abc123")
         assert result == "ABC123"

@@ -13,10 +13,11 @@ together correctly.
 import json
 
 import pytest
-
 from conftest import MockBot, MockCallback, MockFSMContext, MockMessage
+
 from fsm.states import OrderState
-from tests.fixtures.mocks import MockMessage as DuckMockMessage, MockPhoto
+from tests.fixtures.mocks import MockMessage as DuckMockMessage
+from tests.fixtures.mocks import MockPhoto
 
 
 @pytest.mark.asyncio

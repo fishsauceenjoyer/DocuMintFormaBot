@@ -20,17 +20,20 @@ class TestConfigValues:
     def test_database_url_default(self):
         """Verify DATABASE_URL has a default value."""
         from config import DATABASE_URL
+
         assert DATABASE_URL is not None
         assert "sqlite" in DATABASE_URL or "postgres" in DATABASE_URL
 
     def test_routing_has_default(self):
         """Verify ROUTING dict has 'default' key."""
         from config import ROUTING
+
         assert "default" in ROUTING
 
     def test_payment_details_keys(self):
         """Verify PAYMENT_DETAILS has all expected payment methods."""
         from config import PAYMENT_DETAILS
+
         assert "blik" in PAYMENT_DETAILS
         assert "uah" in PAYMENT_DETAILS
         assert "usdt" in PAYMENT_DETAILS
@@ -38,6 +41,7 @@ class TestConfigValues:
     def test_delivery_prices_positive(self):
         """Verify delivery prices are positive integers."""
         from config import DELIVERY_PRICE_EUR, DELIVERY_PRICE_PLN
+
         assert DELIVERY_PRICE_EUR > 0
         assert DELIVERY_PRICE_PLN > 0
 

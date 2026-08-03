@@ -52,7 +52,9 @@ class TestSQLInjection:
         assert mock_db_session.query(Order).count() == 1
         assert get_order_by_id(mock_db_session, "ORDER_SEC_SQL") is not None
 
-    def test_sql_injection_in_delivery_email_stored_as_is(self, mock_db_session):  # noqa: F811
+    def test_sql_injection_in_delivery_email_stored_as_is(
+        self, mock_db_session
+    ):  # noqa: F811
         """A crafted email field with SQL syntax is stored without execution."""
         from db.crud import create_order, get_order_by_id
 
@@ -112,12 +114,19 @@ class TestMarkdownInjection:
                 self.photos = []
 
             async def send_message(self, chat_id, text, **kwargs):
-                self.messages.append({"chat_id": chat_id, "text": text, "kwargs": kwargs})
+                self.messages.append(
+                    {"chat_id": chat_id, "text": text, "kwargs": kwargs}
+                )
                 return True
 
             async def send_photo(self, chat_id, photo, caption=None, **kwargs):
                 self.photos.append(
-                    {"chat_id": chat_id, "photo": photo, "caption": caption, "kwargs": kwargs}
+                    {
+                        "chat_id": chat_id,
+                        "photo": photo,
+                        "caption": caption,
+                        "kwargs": kwargs,
+                    }
                 )
                 return True
 
@@ -134,8 +143,12 @@ class TestMarkdownInjection:
                     "items": [{"full_name": "[click](http://evil.com)"}],
                 }
             ],
-            "delivery": {"name": "Test[User]", "phone": "+48123456789",
-                         "email": "test@test.com", "address": "St (1)"},
+            "delivery": {
+                "name": "Test[User]",
+                "phone": "+48123456789",
+                "email": "test@test.com",
+                "address": "St (1)",
+            },
             "payment_method": "card",
             "total_price": 35,
             "currency": "EUR",
@@ -196,7 +209,9 @@ class TestLongInput:
 class TestDeliveryAndFastOrderSanitization:
     """Verify user-controlled values are sanitized before forwarding."""
 
-    def test_delivery_fields_stored_capped_but_not_escaped(self, mock_db_session):  # noqa: F811
+    def test_delivery_fields_stored_capped_but_not_escaped(
+        self, mock_db_session
+    ):  # noqa: F811
         """Delivery values are stored unchanged (length-capped); escaping happens
         later in utils.router when composing the manager message."""
         from utils.sanitizer import truncate_for_storage

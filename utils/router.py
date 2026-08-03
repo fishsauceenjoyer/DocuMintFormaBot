@@ -18,13 +18,13 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
 
 from config import MANAGER_ID, ROUTING
-from utils.sanitizer import sanitize_for_telegram
 
 # Import admin's order storage to save user_id for later client notifications
 # This is a bridging fix; in production, use database
 from handlers.admin import _orders_lock, orders
 from keyboards.buttons import manager_order_keyboard
 from templates.documents import get_template
+from utils.sanitizer import sanitize_for_telegram
 
 logger = logging.getLogger(__name__)
 
@@ -154,8 +154,11 @@ async def send_order_to_manager(
     for doc in order_data["documents"]:
         doc_type = doc["type"]
         template = get_template(doc_type)
-        doc_name = (template.get("name_en") or template.get("name_ru") or doc_type) \
-            if template else doc_type
+        doc_name = (
+            (template.get("name_en") or template.get("name_ru") or doc_type)
+            if template
+            else doc_type
+        )
 
         text += f"📄 *{doc_name}* x{doc['quantity']}\n"
 
@@ -421,6 +424,8 @@ async def forward_to_manager(
             f"```\n{message_text}\n```\n\n"
             f"_Manager routing is unavailable. A manager will review your request._"
         )
-        await _safe_send(bot=bot, chat_id=user_id, text=direct_text, parse_mode="Markdown")
+        await _safe_send(
+            bot=bot, chat_id=user_id, text=direct_text, parse_mode="Markdown"
+        )
 
     logger.info(f"Help request from user {user_id} forwarded to manager")

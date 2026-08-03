@@ -72,9 +72,11 @@ class TestStateGroups:
     def test_order_state_is_statesgroup(self):
         """Verify OrderState inherits from StatesGroup."""
         from aiogram.fsm.state import StatesGroup
+
         assert issubclass(OrderState, StatesGroup)
 
     def test_admin_state_is_statesgroup(self):
         """Verify AdminState inherits from StatesGroup."""
         from aiogram.fsm.state import StatesGroup
+
         assert issubclass(AdminState, StatesGroup)

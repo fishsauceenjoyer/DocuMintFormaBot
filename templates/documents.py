@@ -10,8 +10,8 @@ from data.business_config import (
     get_all_templates,
     get_price_eur,
     get_price_pln,
-    get_template as _get_template,
 )
+from data.business_config import get_template as _get_template
 from templates.fields import Field
 
 __all__ = [

@@ -10,12 +10,9 @@ import sys
 
 from dotenv import load_dotenv
 
-from data.business_config import (
-    DELIVERY_PRICE_EUR,
-    DELIVERY_PRICE_PLN,
-    PAYMENT_DETAILS as BIZ_PAYMENT_DETAILS,
-    ROUTING_KEYS,
-)
+from data.business_config import DELIVERY_PRICE_EUR, DELIVERY_PRICE_PLN
+from data.business_config import PAYMENT_DETAILS as BIZ_PAYMENT_DETAILS
+from data.business_config import ROUTING_KEYS
 
 load_dotenv()
 

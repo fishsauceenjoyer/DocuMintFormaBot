@@ -5,17 +5,17 @@ Covers:
     - LoggingMiddleware: logs incoming messages and callbacks
 """
 
+import datetime
 import os
 import sys
-import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from aiogram.types import CallbackQuery, Message, User, Chat
+import pytest
+from aiogram.types import CallbackQuery, Chat, Message, User
 
 
 class TestRegistrationMiddleware:
@@ -55,7 +55,9 @@ class TestRegistrationMiddleware:
             message_id=1,
             date=datetime.datetime.now(),
             chat=Chat(id=123, type="private"),
-            from_user=User(id=123, is_bot=False, first_name="Test", username="existinguser"),
+            from_user=User(
+                id=123, is_bot=False, first_name="Test", username="existinguser"
+            ),
             text="/start",
         )
 
@@ -81,7 +83,9 @@ class TestRegistrationMiddleware:
             message_id=1,
             date=datetime.datetime.now(),
             chat=Chat(id=456, type="private"),
-            from_user=User(id=456, is_bot=False, first_name="Test", username="existinguser"),
+            from_user=User(
+                id=456, is_bot=False, first_name="Test", username="existinguser"
+            ),
             text="/start",
         )
 
@@ -136,7 +140,9 @@ class TestLoggingMiddleware:
             message_id=1,
             date=datetime.datetime.now(),
             chat=Chat(id=123, type="private"),
-            from_user=User(id=123, is_bot=False, first_name="Test", username="testuser"),
+            from_user=User(
+                id=123, is_bot=False, first_name="Test", username="testuser"
+            ),
             text="Hello bot",
         )
 
@@ -181,7 +187,9 @@ class TestLoggingMiddleware:
             message_id=1,
             date=datetime.datetime.now(),
             chat=Chat(id=123, type="private"),
-            from_user=User(id=123, is_bot=False, first_name="Test", username="testuser"),
+            from_user=User(
+                id=123, is_bot=False, first_name="Test", username="testuser"
+            ),
             text="Hello",
         )
 
