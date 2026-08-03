@@ -1,0 +1,56 @@
+name: 🤖 AI-Driven Quality Gates (CI/CD)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  quality_and_security:
+    name: 🛡️ Контроль качества и Безопасность
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📁 Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: ⚡ Установка uv и Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true # Включаем кэширование для молниеносной сборки
+
+      - name: 📦 Синхронизация зависимостей
+        run: uv sync --frozen
+
+      - name: 🧼 Проверка линтерами (Static Code Analysis)
+        run: |
+          uv run black --check .
+          uv run flake8 .
+          uv run mypy .
+
+      - name: 🕵️‍♂️ Аудит безопасности (Bandit)
+        run: uv run bandit -r . -f txt
+
+  automated_testing:
+    name: 🧪 Тестирование и Покрытие (Pytest)
+    needs: quality_and_security # Тесты запустятся только если линтеры и безопасность чисты
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📁 Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: ⚡ Установка uv и Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: 📦 Синхронизация зависимостей
+        run: uv sync --frozen
+
+      - name: 🟢 Запуск тестов и проверка покрытия (Coverage)
+        run: |
+          uv run pytest -v --cov=. --cov-report=term-missing
