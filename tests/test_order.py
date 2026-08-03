@@ -45,10 +45,11 @@ async def test_callback_document_choice_demo_service(mock_fsm, clean_user_sessio
     await process_document_choice(callback, mock_fsm)
 
     # Verify message was edited with template info
-    assert callback.message._edited_text is not None
-    assert "demo_service application" in callback.message._edited_text
-    assert "35" in callback.message._edited_text  # price (EUR)
-    assert "€" in callback.message._edited_text
+    edited_text = getattr(callback.message, "_edited_text", None)
+    assert edited_text is not None
+    assert "demo_service application" in edited_text
+    assert "35" in edited_text  # price (EUR)
+    assert "€" in edited_text
     # Verify state
     assert mock_fsm._data.get("state") == OrderState.entering_quantity
 
@@ -63,12 +64,13 @@ async def test_callback_document_choice_demo_document(mock_fsm, clean_user_sessi
 
     await process_document_choice(callback, mock_fsm)
 
-    assert callback.message._edited_text is not None
+    edited_text = getattr(callback.message, "_edited_text", None)
+    assert edited_text is not None
     # The English name is "Foreign demo_document"
-    assert "Foreign demo_document" in callback.message._edited_text
+    assert "Foreign demo_document" in edited_text
     # demo_document price is 45 EUR
-    assert "45" in callback.message._edited_text
-    assert "€" in callback.message._edited_text
+    assert "45" in edited_text
+    assert "€" in edited_text
     assert mock_fsm._data.get("state") == OrderState.entering_quantity
 
 
@@ -141,7 +143,7 @@ async def test_checkout_rejects_empty_cart(mock_fsm, clean_user_sessions):
     await callback_checkout(callback, mock_fsm)
 
     assert callback._answered is True
-    assert "Cart is empty" in callback._answered_text
+    assert "Cart is empty" in (callback._answered_text or "")
     assert mock_fsm._data.get("state") == OrderState.choosing_document
 
 

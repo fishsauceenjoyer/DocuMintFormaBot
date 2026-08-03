@@ -353,7 +353,7 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
 
 
 async def _notify_admin_validation_error(
-    message: Message,
+    message: Any,
     user_id: int,
     field_name: str,
     field_type: str,
@@ -458,7 +458,7 @@ async def process_document_field(message: Message, state: FSMContext):
     )
 
     if not result.is_valid:
-        # Notify admin about the validation failure
+         # Notify admin about the validation failure
         await _notify_admin_validation_error(
             message=message,
             user_id=user_id,

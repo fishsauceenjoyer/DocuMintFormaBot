@@ -12,7 +12,7 @@ MANAGER_ID chat (configured via ``config.MANAGER_ID``).
 import json
 import logging
 import traceback
-from typing import Optional
+from typing import Any, Optional
 
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
@@ -114,7 +114,7 @@ async def _safe_send(
 
 
 async def send_order_to_manager(
-    bot: Bot,
+    bot: Any,
     order_data: dict,
     user_id: int,
     payment_proof_file_id: Optional[str] = None,

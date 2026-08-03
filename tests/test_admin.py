@@ -25,7 +25,7 @@ from tests.fixtures.mocks import MockBot, MockCallback, MockFSMContext, MockMess
 
 # ── Helper: admin message ──────────────────────────────────────────────
 
-def _admin_message(text: str, chat_id: int = 999) -> MockMessage:
+def _admin_message(text: str | None = None, chat_id: int = 999) -> MockMessage:
     """Create a MockMessage with admin username."""
     msg = MockMessage(text=text, chat_id=chat_id, user_id=chat_id)
     msg.from_user.username = "admin"
@@ -74,7 +74,7 @@ class TestCmdSendDoc:
                 await cmd_send_doc(message, state)
 
         assert state._data.get("state") is None
-        assert "нет прав" in message._answered_text.lower()
+        assert "нет прав" in (message._answered_text or "").lower()
 
 
 # ── callback_send_doc ──────────────────────────────────────────────────
@@ -111,7 +111,7 @@ class TestCallbackSendDoc:
                 await callback_send_doc(callback, state)
 
         assert callback._answered is True
-        assert "нет прав" in callback._answered_text.lower()
+        assert "нет прав" in (callback._answered_text or "").lower()
 
 
 # ── process_document_file ──────────────────────────────────────────────
@@ -166,7 +166,7 @@ class TestProcessDocumentFile:
 
         await process_document_file(message, state)
 
-        assert "файл" in message._answered_text.lower()
+        assert "файл" in (message._answered_text or "").lower()
 
     @pytest.mark.asyncio
     async def test_process_unknown_order(self):
@@ -180,7 +180,7 @@ class TestProcessDocumentFile:
         with patch("handlers.admin.orders", {}):
             await process_document_file(message, state)
 
-        assert "не найден" in message._answered_text
+        assert "не найден" in (message._answered_text or "")
 
 
 # ── /track command ─────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ class TestCmdTrack:
         with patch("utils.auth.is_admin", return_value=True):
             await cmd_track(message, state)
 
-        assert "TRACK123" in message._answered_text
+        assert "TRACK123" in (message._answered_text or "")
 
     @pytest.mark.asyncio
     async def test_track_without_params_shows_help(self):
@@ -210,7 +210,7 @@ class TestCmdTrack:
         with patch("utils.auth.is_admin", return_value=True):
             await cmd_track(message, state)
 
-        assert "формате" in message._answered_text
+        assert "формате" in (message._answered_text or "")
 
 
 # ── callback_send_track ────────────────────────────────────────────────
@@ -247,7 +247,7 @@ class TestCallbackSendTrack:
                 await callback_send_track(callback, state)
 
         assert callback._answered is True
-        assert "нет прав" in callback._answered_text.lower()
+        assert "нет прав" in (callback._answered_text or "").lower()
 
 
 # ── process_tracking_number ────────────────────────────────────────────
@@ -283,7 +283,7 @@ class TestProcessTrackingNumber:
         with patch("handlers.admin.orders", {}):
             await process_tracking_number(message, state)
 
-        assert "не найден" in message._answered_text
+        assert "не найден" in (message._answered_text or "")
 
 
 # ── callback_order_done ────────────────────────────────────────────────
@@ -322,7 +322,7 @@ class TestCallbackOrderDone:
                 await callback_order_done(callback, state)
 
         assert callback._answered is True
-        assert "нет прав" in callback._answered_text.lower()
+        assert "нет прав" in (callback._answered_text or "").lower()
 
 
 # ── /orders command ────────────────────────────────────────────────────
@@ -355,10 +355,10 @@ class TestCmdOrders:
             with patch("db.crud.SessionLocal", return_value=mock_db):
                 await cmd_orders_list(message, state)
 
-        assert "ORDER_001" in message._answered_text
-        assert "ORDER_002" in message._answered_text
-        assert "paid" in message._answered_text
-        assert "completed" in message._answered_text
+        assert "ORDER_001" in (message._answered_text or "")
+        assert "ORDER_002" in (message._answered_text or "")
+        assert "paid" in (message._answered_text or "")
+        assert "completed" in (message._answered_text or "")
 
     @pytest.mark.asyncio
     async def test_orders_empty(self):
@@ -374,7 +374,7 @@ class TestCmdOrders:
             with patch("db.crud.SessionLocal", return_value=mock_db):
                 await cmd_orders_list(message, state)
 
-        assert "нет" in message._answered_text.lower()
+        assert "нет" in (message._answered_text or "").lower()
 
 
 # ── /stats command ─────────────────────────────────────────────────────
@@ -395,8 +395,8 @@ class TestCmdStats:
             with patch("db.crud.SessionLocal", return_value=mock_db):
                 await cmd_stats(message)
 
-        assert "Всего" in message._answered_text
-        assert "10" in message._answered_text
+        assert "Всего" in (message._answered_text or "")
+        assert "10" in (message._answered_text or "")
 
 
 # ── /help_admin command ────────────────────────────────────────────────
@@ -413,10 +413,10 @@ class TestCmdHelpAdmin:
         with patch("utils.auth.is_admin", return_value=True):
             await cmd_help_admin(message)
 
-        assert "/send_doc" in message._answered_text
-        assert "/track" in message._answered_text
-        assert "/orders" in message._answered_text
-        assert "/stats" in message._answered_text
+        assert "/send_doc" in (message._answered_text or "")
+        assert "/track" in (message._answered_text or "")
+        assert "/orders" in (message._answered_text or "")
+        assert "/stats" in (message._answered_text or "")
 
 
 # ── extract_order_id utility ───────────────────────────────────────────
