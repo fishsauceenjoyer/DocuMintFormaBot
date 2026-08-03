@@ -21,14 +21,18 @@ class TestDocumentKeyboard:
         keyboard = buttons.document_keyboard(docs)
 
         assert isinstance(keyboard, InlineKeyboardMarkup)
-        assert len(keyboard.inline_keyboard) == 4  # 2 docs + help_manager + cancel_to_menu
+        assert (
+            len(keyboard.inline_keyboard) == 4
+        )  # 2 docs + help_manager + cancel_to_menu
 
     def test_document_keyboard_callback_data(self):
         """Verify callback data follows 'doc_<code>' pattern."""
         docs = [("visa", "Visa"), ("passport", "Passport")]
         keyboard = buttons.document_keyboard(docs)
 
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "doc_visa" in callback_data
         assert "doc_passport" in callback_data
         assert "help_manager" in callback_data
@@ -47,7 +51,9 @@ class TestQuantityKeyboard:
         """Verify quantity keyboard has buttons 1-5."""
         keyboard = buttons.quantity_keyboard()
 
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "qty_1" in callback_data
         assert "qty_5" in callback_data
 
@@ -65,14 +71,18 @@ class TestDeliveryKeyboard:
         """Verify delivery keyboard has yes/no options."""
         keyboard = buttons.delivery_keyboard()
 
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "delivery_yes" in callback_data
         assert "delivery_no" in callback_data
 
     def test_delivery_keyboard_has_help(self):
         """Verify delivery keyboard has help_manager button."""
         keyboard = buttons.delivery_keyboard()
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "help_manager" in callback_data
 
 
@@ -83,7 +93,9 @@ class TestPaymentKeyboard:
         """Verify payment keyboard has all payment methods."""
         keyboard = buttons.payment_keyboard()
 
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "pay_blik" in callback_data
         assert "pay_uah" in callback_data
         assert "pay_usdt" in callback_data
@@ -91,7 +103,9 @@ class TestPaymentKeyboard:
     def test_payment_keyboard_has_help(self):
         """Verify payment keyboard has help_manager button."""
         keyboard = buttons.payment_keyboard()
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "help_manager" in callback_data
 
 
@@ -102,7 +116,9 @@ class TestManagerOrderKeyboard:
         """Verify manager keyboard has send_doc, send_track, order_done."""
         keyboard = buttons.manager_order_keyboard("ORDER_TEST123")
 
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "send_doc_ORDER_TEST123" in callback_data
         assert "send_track_ORDER_TEST123" in callback_data
         assert "order_done_ORDER_TEST123" in callback_data
@@ -115,7 +131,9 @@ class TestMainMenuKeyboard:
         """Verify main menu has new order, fast order, help."""
         keyboard = buttons.main_menu_keyboard()
 
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "new_order" in callback_data
         assert "fast_order" in callback_data
         assert "help_manager" in callback_data
@@ -128,7 +146,9 @@ class TestCartKeyboard:
         """Verify cart keyboard has checkout, add more, clear, help."""
         keyboard = buttons.cart_keyboard()
 
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "cart_checkout" in callback_data
         assert "cart_add_more" in callback_data
         assert "cart_clear" in callback_data
@@ -142,7 +162,9 @@ class TestConfirmKeyboard:
         """Verify confirm keyboard has yes/no buttons."""
         keyboard = buttons.confirm_keyboard()
 
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "confirm_yes" in callback_data
         assert "confirm_no" in callback_data
 
@@ -154,6 +176,8 @@ class TestBackKeyboard:
         """Verify back keyboard has one back button."""
         keyboard = buttons.back_keyboard()
 
-        callback_data = [btn.callback_data for row in keyboard.inline_keyboard for btn in row]
+        callback_data = [
+            btn.callback_data for row in keyboard.inline_keyboard for btn in row
+        ]
         assert "back" in callback_data
         assert len(callback_data) == 1

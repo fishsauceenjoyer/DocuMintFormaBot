@@ -6,12 +6,17 @@ Simulates a real user journey through the entire bot:
 Uses mocked Telegram objects and an in-memory database so it runs offline.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from fsm.states import OrderState, AdminState
+import pytest
+
+from fsm.states import AdminState, OrderState
 from tests.fixtures.mocks import (
-    MockBot, MockCallback, MockFSMContext, MockMessage, MockPhoto,
+    MockBot,
+    MockCallback,
+    MockFSMContext,
+    MockMessage,
+    MockPhoto,
 )
 
 
@@ -39,8 +44,7 @@ async def test_e2e_full_order_flow(clean_user_sessions):
     assert msg._answered_text is not None
 
     # ── Step 2: Choose document (visa) → entering_quantity ──────────
-    from handlers.order import process_document_choice
-    from handlers.order import get_user_session
+    from handlers.order import get_user_session, process_document_choice
 
     callback1 = MockCallback(data="doc_visa", user_id=user_id)
     callback1.bot = MockBot()
@@ -50,11 +54,11 @@ async def test_e2e_full_order_flow(clean_user_sessions):
     assert callback1._answered is True
 
     # ── Step 3: Choose quantity (2) → filling_document ──────────────
-    from handlers.order import process_quantity
-
     # process_quantity checks isinstance(callback.message, Message) and
     # isinstance(callback.from_user). Use conftest MockMessage (inherits Message).
     from conftest import MockMessage as RealMockMessage
+
+    from handlers.order import process_quantity
 
     callback2 = MockCallback(data="qty_2", user_id=user_id)
     callback2.bot = MockBot()
@@ -70,6 +74,7 @@ async def test_e2e_full_order_flow(clean_user_sessions):
 
     # Set up the template with just one field
     from templates.fields import Field
+
     session["current_template"] = {
         "fields": [Field("full_name", "Full Name", "text")],
         "code": "visa",
@@ -89,11 +94,13 @@ async def test_e2e_full_order_flow(clean_user_sessions):
 
     # After single field, should transition to asking_delivery
     final_state = await state.get_state()
-    assert final_state == OrderState.asking_delivery, \
-        f"Expected asking_delivery, got {final_state}"
+    assert (
+        final_state == OrderState.asking_delivery
+    ), f"Expected asking_delivery, got {final_state}"
 
     # ── Step 5: Choose delivery (no) → choosing_payment ─────────────
     from handlers.order import process_delivery_choice
+
     callback3 = MockCallback(data="delivery_no", user_id=user_id)
     callback3.bot = MockBot()
     await process_delivery_choice(callback3, state)
@@ -118,9 +125,13 @@ async def test_e2e_full_order_flow(clean_user_sessions):
     # Ensure cart is populated
     session = await get_user_session(user_id)
     session["cart"] = [
-        {"type": "visa", "quantity": 1, "items": [
-            {"full_name": "John Doe"},
-        ]}
+        {
+            "type": "visa",
+            "quantity": 1,
+            "items": [
+                {"full_name": "John Doe"},
+            ],
+        }
     ]
     session["payment_method"] = "blik"
     session["total_price"] = 35
@@ -154,10 +165,15 @@ async def test_e2e_full_order_flow(clean_user_sessions):
     assert state_val is None, f"State must be None after completion, got {state_val}"
 
     # User session must be cleaned up
-    async with __import__("handlers.order", fromlist=["_sessions_lock", "user_sessions"]).\
-            _sessions_lock:
-        assert user_id not in __import__("handlers.order", fromlist=["user_sessions"]).\
-            user_sessions, "Session must be removed after completion"
+    async with __import__(
+        "handlers.order", fromlist=["_sessions_lock", "user_sessions"]
+    )._sessions_lock:
+        assert (
+            user_id
+            not in __import__(
+                "handlers.order", fromlist=["user_sessions"]
+            ).user_sessions
+        ), "Session must be removed after completion"
 
 
 @pytest.mark.asyncio
@@ -168,14 +184,15 @@ async def test_e2e_cancel_flow(clean_user_sessions):
 
     # ── Start an order ──────────────────────────────────────────────
     from handlers.start import cmd_start
+
     msg = MockMessage(text="/start", chat_id=user_id, user_id=user_id)
     msg.bot = MockBot()
     await cmd_start(msg, state)
     assert await state.get_state() == OrderState.choosing_document
 
     # ── Cancel to menu ──────────────────────────────────────────────
+    from handlers.order import _sessions_lock, user_sessions
     from handlers.start import callback_cancel_to_menu
-    from handlers.order import user_sessions, _sessions_lock
 
     # Put something in session
     async with _sessions_lock:
@@ -192,12 +209,14 @@ async def test_e2e_cancel_flow(clean_user_sessions):
         assert user_id not in user_sessions
 
 
-@pytest.mark.skip(reason="Admin flow requires deeper integration with admin-only decorator and Messenger API mocking")
+@pytest.mark.skip(
+    reason="Admin flow requires deeper integration with admin-only decorator and Messenger API mocking"
+)
 @pytest.mark.asyncio
 async def test_e2e_admin_flow(clean_user_sessions):
     """Test admin flow: send document to client."""
-    from handlers.admin import cmd_send_doc, callback_send_doc, process_document_file
     from fsm.states import AdminState
+    from handlers.admin import callback_send_doc, cmd_send_doc, process_document_file
     from tests.fixtures.mocks import MockBot, MockCallback, MockFSMContext, MockPhoto
 
     admin_id = 999
@@ -228,6 +247,7 @@ async def test_e2e_admin_flow(clean_user_sessions):
 
     class _MsgProxy:
         """Minimal proxy that satisfies hasattr(fake, 'edit_text') and is not None."""
+
         async def edit_text(self, text, **kwargs):
             return True
 
@@ -239,8 +259,9 @@ async def test_e2e_admin_flow(clean_user_sessions):
     with patch("utils.auth.is_admin", return_value=True):
         await callback_send_doc(callback, state)
 
-    assert state._data.get("order_id") == "ORDER_E2E_001", \
-        f"Expected ORDER_E2E_001, got {state._data.get('order_id')}"
+    assert (
+        state._data.get("order_id") == "ORDER_E2E_001"
+    ), f"Expected ORDER_E2E_001, got {state._data.get('order_id')}"
 
     # ── Admin uploads file ──────────────────────────────────────────
     msg2 = MockMessage(chat_id=admin_id, user_id=admin_id)
@@ -249,9 +270,10 @@ async def test_e2e_admin_flow(clean_user_sessions):
     msg2.photo = [MockPhoto(file_id="completed_doc.jpg")]
 
     with patch("utils.auth.is_admin", return_value=True):
-        with patch("handlers.admin.orders",
-                   {"ORDER_E2E_001": {"user_id": 123}}):
-            with patch("utils.router.send_document_to_client", AsyncMock()) as mock_send:
+        with patch("handlers.admin.orders", {"ORDER_E2E_001": {"user_id": 123}}):
+            with patch(
+                "utils.router.send_document_to_client", AsyncMock()
+            ) as mock_send:
                 await process_document_file(msg2, state)
 
     # Document must be sent to client

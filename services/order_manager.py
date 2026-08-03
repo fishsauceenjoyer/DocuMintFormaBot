@@ -71,6 +71,7 @@ class OrderManager:
                 return None
             order.status = status
             from datetime import datetime
+
             order.updated_at = datetime.utcnow()
             db.commit()
             db.refresh(order)

@@ -2,7 +2,7 @@
 
 import pytest
 
-from services import pricing, order_builder, order_manager
+from services import order_builder, order_manager, pricing
 
 
 @pytest.fixture
@@ -54,13 +54,17 @@ class TestPricing:
 
     def test_calculate_total_with_delivery(self):
         items = [{"type": "visa", "quantity": 1}]
-        total = pricing.calculate_total(items, delivery={"name": "Test"}, currency="EUR")
+        total = pricing.calculate_total(
+            items, delivery={"name": "Test"}, currency="EUR"
+        )
         expected = pricing.document_price("EUR", "visa") + pricing.delivery_price("EUR")
         assert total == expected
 
     def test_calculate_total_empty_cart(self):
         assert pricing.calculate_total([], delivery=None, currency="EUR") == 0
-        assert pricing.calculate_total([], delivery={"name": "Test"}, currency="PLN") == pricing.delivery_price("PLN")
+        assert pricing.calculate_total(
+            [], delivery={"name": "Test"}, currency="PLN"
+        ) == pricing.delivery_price("PLN")
 
 
 class TestOrderBuilder:
@@ -87,9 +91,18 @@ class TestOrderBuilder:
             "order_id": "ORDER_999999",
             "user": {"id": 321, "username": None},
             "documents": [
-                {"type": "passport", "quantity": 2, "items": [{"first": "A", "second": "B"}]}
+                {
+                    "type": "passport",
+                    "quantity": 2,
+                    "items": [{"first": "A", "second": "B"}],
+                }
             ],
-            "delivery": {"name": "Alice", "phone": "123", "email": "a@b.com", "address": "Street 1"},
+            "delivery": {
+                "name": "Alice",
+                "phone": "123",
+                "email": "a@b.com",
+                "address": "Street 1",
+            },
             "total_price": 400,
             "currency": "PLN",
             "payment_method": "uah",
@@ -112,8 +125,15 @@ class TestOrderManager:
             "status": "pending",
             "payment_method": "usdt",
             "payment_proof_file_id": None,
-            "delivery": {"name": "Bob", "phone": "999", "email": "bob@example.com", "address": "Main 1"},
-            "documents": [{"type": "visa", "quantity": 1, "items": [{"full_name": "Bob"}]}],
+            "delivery": {
+                "name": "Bob",
+                "phone": "999",
+                "email": "bob@example.com",
+                "address": "Main 1",
+            },
+            "documents": [
+                {"type": "visa", "quantity": 1, "items": [{"full_name": "Bob"}]}
+            ],
             "items": [
                 {
                     "type": "visa",

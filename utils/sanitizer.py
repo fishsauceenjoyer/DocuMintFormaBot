@@ -28,7 +28,9 @@ TG_MESSAGE_LIMIT = 4096
 DEFAULT_MAX_LENGTH = 3800
 
 
-def sanitize_for_telegram(text: Optional[str], max_length: int = DEFAULT_MAX_LENGTH) -> str:
+def sanitize_for_telegram(
+    text: Optional[str], max_length: int = DEFAULT_MAX_LENGTH
+) -> str:
     """Escape Markdown special characters and cap length.
 
     All user-controlled strings that end up in a Telegram message sent with
