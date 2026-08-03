@@ -27,3 +27,23 @@ Replace these with real screenshots when you have a running bot instance.
 
 > **Note:** Generate real screenshots by running the bot locally or in Docker,
 > then opening a chat with it in Telegram.
+
+---
+
+## Quality Pipeline
+
+See [README.md](../README.md#quality-pipeline-cicd) for the full Quality Gates
+description. In short: every push to `main` and every PR runs `black`, `flake8`,
+`mypy`, `bandit`, and `pytest` in sequence. The test job only starts if the
+quality/security job passes.
+
+## AI-Driven QA Prompts
+
+The repository ships with 6 prompt templates in `../prompts/` for Cline/Obsidian:
+
+- `security_audit_deepseek.md` — Security Auditor
+- `mutation_tester_cline.md` — Mutant Killer
+- `config_tz_validator.md` — Business-Logic Validator
+- `role_pr_reviewer.md` — PR Reviewer
+- `role_developer.md` — Developer
+- `role_qa_automation.md` — QA Automation Engineer
