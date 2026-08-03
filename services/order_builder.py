@@ -20,7 +20,12 @@ def build_manager_message(order_data: Dict[str, Any]) -> str:
     """
     text = f"🆕 **NEW ORDER #{order_data['order_id']}**\n"
     user = order_data.get("user", {})
-    text += f"👤 Client: {user.get('username') or f'ID: {user.get('id')}'}\n\n"
+    username = user.get("username")
+    if username:
+        client_ref = username
+    else:
+        client_ref = f"ID: {user.get('id')}"
+    text += f"👤 Client: {client_ref}\n\n"
 
     for doc in order_data.get("documents", []):
         doc_type = doc["type"]

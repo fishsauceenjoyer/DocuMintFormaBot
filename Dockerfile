@@ -1,49 +1,46 @@
 # ============================================
-# Dockerfile for DocuMintFormaBot
+# Dockerfile for DocuMintFormaBot (uv)
 # ============================================
 
 # Stage 1: Build stage
-FROM python:3.11-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
 
 WORKDIR /app
 
-# Install system dependencies for building Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# Копируем манифесты зависимостей
+COPY pyproject.toml uv.lock ./
 
-# Copy requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+# Устанавливаем зависимости в виртуальное окружение
+# --frozen — используем uv.lock без пересчёта
+# --no-dev — не ставим dev-зависимости в продакшн
+RUN uv sync --frozen --no-dev --no-install-project
 
 # Stage 2: Runtime stage
 FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
-# Install runtime system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# Копируем uv в runtime (нужен для uv run / uv sync при старте)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /root/.local
+# Копируем установленные пакеты из builder
+COPY --from=builder /app/.venv /app/.venv
 
-# Make sure scripts in .local are usable
-ENV PATH=/root/.local/bin:$PATH
-
-# Copy application code
+# Копируем приложение
 COPY . .
 
-# Create .env from example if not present (will use actual .env from mount/volume)
+# Создаём .env из примера, если нет
 RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
-# Expose port (not used for polling, but for healthcheck)
+# Путь к venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Expose port (не используется для polling, но для healthcheck)
 EXPOSE 8080
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "from config import validate_config; validate_config()" || exit 1
 
-# Run the bot
-CMD ["python", "main.py"]
+# Запуск бота через uv run
+CMD ["uv", "run", "python", "main.py"]
