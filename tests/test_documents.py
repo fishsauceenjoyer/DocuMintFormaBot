@@ -103,6 +103,7 @@ class TestGetTemplate:
         codes = [code for code, _ in get_all_templates()]
         for code in codes:
             template = get_template(code)
+            assert template is not None, f"Template {code} not found"
             for field in template["fields"]:
                 assert isinstance(field, Field), f"Field in {code} is not a Field object"
                 assert field.id, f"Field in {code} has no id"
@@ -115,6 +116,7 @@ class TestGetTemplate:
         codes = [code for code, _ in get_all_templates()]
         for code in codes:
             template = get_template(code)
+            assert template is not None, f"Template {code} not found"
             # Templates use price_eur and price_pln keys
             has_price = "price_eur" in template and "price_pln" in template
             assert has_price, f"Template {code} has no pricing info"

@@ -6,13 +6,13 @@ contexts: document type selection, quantity, delivery, payment, cart
 actions, and manager actions.
 """
 
-from typing import List, Tuple
+from typing import Sequence
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 def document_keyboard(
-    docs: List[Tuple[str, str]],
+    docs: Sequence[tuple[str, str]],
 ) -> InlineKeyboardMarkup:
     """
     Клавиатура для выбора типа документа.
