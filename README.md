@@ -46,16 +46,6 @@ See [docs/README.md](docs/README.md) for the full screenshot gallery.
 ---
 
 ## Project structure
->>>>>>>
-</replace_in_file>
-<task_progress>- [x] Stage 4 completed and pushed
-- [x] Create branch feat/deploy-and-documentation
-- [x] Add Redis service to docker-compose.yml
-- [x] REDIS_URL already in .env.example
-- [x] Create docs/README.md with screenshot placeholders
-- [x] Add Screenshots section to README.md
-- [ ] Add Переменные окружения section to README.md
-- [ ] Commit and push Stage 5</task_progress>
 
 ```
 documintformabot/
@@ -105,16 +95,14 @@ documintformabot/
 git clone https://github.com/fishsauceenjoyer/DocuMintFormaBot.git
 cd DocuMintFormaBot
 
-# Create virtual environment (Windows)
-python -m venv .venv
-.venv\Scripts\activate
+# Install uv (if not already installed)
+# Windows:
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# Linux / Mac:
+# curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Create virtual environment (Linux / Mac)
-# python -m venv .venv
-# source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+# Create virtual environment and install dependencies
+uv sync --python 3.11
 ```
 
 ### 2. Configure `.env`
@@ -140,8 +128,8 @@ Edit `.env` in any text editor. Minimum required changes:
 ### 3. Run
 
 ```bash
-# Locally
-python main.py
+# Locally (via uv — no venv activation needed)
+uv run python main.py
 
 # Or with Docker
 docker compose up --build -d
@@ -271,13 +259,16 @@ cp .env.example .env
 
 ```bash
 # Default — all tests use mocks (no Telegram API needed)
-pytest -v
+uv run pytest -v
 
 # If you have a real bot token and network — test real API
-pytest -v --with-real-api
+uv run pytest -v --with-real-api
 
 # All tests with coverage
-pytest --cov=. -v
+uv run pytest --cov=. -v
+
+# Security audit (bandit)
+uv run bandit -r . -f txt
 ```
 
 ## Database migrations
@@ -289,30 +280,30 @@ models (`users`, `document_types`, `orders`, `order_items`).
 ### First-time setup
 
 ```bash
-# Install Alembic if not already present
-pip install alembic
+# Alembic is included in dev dependencies — just sync
+uv sync
 
 # Apply all migrations to the local SQLite database
-alembic upgrade head
+uv run alembic upgrade head
 ```
 
 ### Common commands
 
 ```bash
 # Create a new empty migration
-alembic revision -m "describe your change"
+uv run alembic revision -m "describe your change"
 
 # Autogenerate a migration from model changes (best-effort; review before applying)
-alembic revision --autogenerate -m "describe your change"
+uv run alembic revision --autogenerate -m "describe your change"
 
 # Apply migrations
-alembic upgrade head
+uv run alembic upgrade head
 
 # Downgrade one step
-alembic downgrade -1
+uv run alembic downgrade -1
 
 # Show current revision
-alembic current
+uv run alembic current
 ```
 
 ### Switching environments
@@ -381,19 +372,82 @@ If you set `ADMIN_USERNAME` to your own Telegram handle in `.env`:
 ## For developers
 
 ```bash
+# Sync dependencies
+uv sync
+
 # Format
-black .
+uv run black .
+uv run isort .
 
 # Lint
-flake8 .
+uv run flake8 .
 
 # Type checking
-mypy .
+uv run mypy .
+
+# Security audit
+uv run bandit -r . -f txt
 
 # Tests
-pytest -v
-pytest --cov=. -v
+uv run pytest -v
+uv run pytest --cov=. -v
+
+# Or use Makefile shortcuts
+make sync        # uv sync
+make test        # uv run pytest -q
+make lint        # black + isort + flake8 + mypy
+make format      # black + isort
+make run         # uv run python main.py
 ```
+
+---
+
+## Quality Pipeline (CI/CD)
+
+The repository uses **AI-Driven Quality Gates** on every push to `main` and on
+every Pull Request. The pipeline runs two jobs:
+
+| Job | What it checks | Tools |
+|---|---|---|
+| 🛡️ `quality_and_security` | Formatting, lint, type hints, security vulnerabilities | `black`, `flake8`, `mypy`, `bandit` |
+| 🧪 `automated_testing` | Unit/integration tests + coverage | `pytest`, `pytest-cov` |
+
+The test job runs **only if** the quality & security job passes. This prevents
+merging code with style violations, type errors, or known security issues.
+
+**Local equivalent:**
+```bash
+# Run the full quality gate locally
+uv run black --check .
+uv run flake8 .
+uv run mypy .
+uv run bandit -r . -f txt
+uv run pytest -v --cov=. --cov-report=term-missing
+```
+
+---
+
+## AI-Driven QA Prompts
+
+The repository includes 6 reusable prompt templates for AI-assisted quality
+assurance. Store them in `prompts/` and load into Cline/Obsidian to automate
+security audits, mutation testing, config validation, PR review, development,
+and test generation.
+
+| Template | Role | Target Model | Purpose |
+|---|---|---|---|
+| `prompts/security_audit_deepseek.md` | Security Auditor | DeepSeek-R1 | Audit `bandit` output and code snippets for vulnerabilities |
+| `prompts/mutation_tester_cline.md` | Mutant Killer | DeepSeek-V4 | Kill surviving mutants and close coverage gaps |
+| `prompts/config_tz_validator.md` | Business-Logic Validator | DeepSeek-R1 | Validate `business_config.py` against new ТЗ |
+| `prompts/role_pr_reviewer.md` | PR Reviewer | DeepSeek-R1 / Claude 3.5 Sonnet | Enforce architecture, security, and testability |
+| `prompts/role_developer.md` | Developer | DeepSeek-V4 / Qwen-2.5-Coder | Implement features cleanly with uv stack |
+| `prompts/role_qa_automation.md` | QA Automation Engineer | DeepSeek-V4 / DeepSeek-R1 | Generate and validate pytest suites |
+
+**How to use:**
+1. Copy a template from `prompts/` into your scratchpad/note.
+2. Fill in the `{{placeholders}}` with actual code/diffs/logs.
+3. Run through Cline or paste into your preferred LLM.
+4. Iterate until the pipeline is green.
 
 ---
 
