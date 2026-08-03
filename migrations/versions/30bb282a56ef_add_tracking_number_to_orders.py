@@ -5,15 +5,15 @@ Revises: 138da28f5512
 Create Date: 2026-07-22 16:51:25.205379
 
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '30bb282a56ef'
-down_revision: Union[str, Sequence[str], None] = '138da28f5512'
+revision: str = "30bb282a56ef"
+down_revision: Union[str, Sequence[str], None] = "138da28f5512"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

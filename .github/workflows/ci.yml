@@ -18,7 +18,7 @@ jobs:
       - name: ⚡ Установка uv и Python
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           enable-cache: true # Включаем кэширование для молниеносной сборки
 
       - name: 📦 Синхронизация зависимостей
@@ -45,7 +45,7 @@ jobs:
       - name: ⚡ Установка uv и Python
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           enable-cache: true
 
       - name: 📦 Синхронизация зависимостей

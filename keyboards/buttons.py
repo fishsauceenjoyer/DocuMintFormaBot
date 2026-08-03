@@ -39,11 +39,7 @@ def document_keyboard(
         ]
     )
     buttons.append(
-        [
-            InlineKeyboardButton(
-                text="🏠 В главное меню", callback_data="cancel_to_menu"
-            )
-        ]
+        [InlineKeyboardButton(text="🏠 В главное меню", callback_data="cancel_to_menu")]
     )
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -71,11 +67,7 @@ def quantity_keyboard() -> InlineKeyboardMarkup:
         ]
     )
     buttons.append(
-        [
-            InlineKeyboardButton(
-                text="🏠 В главное меню", callback_data="cancel_to_menu"
-            )
-        ]
+        [InlineKeyboardButton(text="🏠 В главное меню", callback_data="cancel_to_menu")]
     )
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -243,7 +235,11 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
     """
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="▶️ Начать новый заказ", callback_data="new_order")],
+            [
+                InlineKeyboardButton(
+                    text="▶️ Начать новый заказ", callback_data="new_order"
+                )
+            ],
             [
                 InlineKeyboardButton(
                     text="👤 Я постоянный клиент", callback_data="fast_order"

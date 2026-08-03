@@ -3,8 +3,9 @@
 Provides validation logic for user input fields: type checking, length limits,
 and sanitization against SQL injection, XSS and other malicious payloads.
 """
-import re
+
 import logging
+import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -111,15 +112,17 @@ EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # Import config-based constants at runtime to avoid circular imports
 _imported_config = None
 
+
 def _get_config():
     """Lazy-import business config constants."""
     global _imported_config
     if _imported_config is None:
         from data.business_config import (
-            DESTINATION_COUNTRIES,
             ALLOWED_COUNTRIES_HINT,
+            DESTINATION_COUNTRIES,
             PASSPORT_NUMBER_PATTERN,
         )
+
         _imported_config = {
             "DESTINATION_COUNTRIES": DESTINATION_COUNTRIES,
             "ALLOWED_COUNTRIES_HINT": ALLOWED_COUNTRIES_HINT,
@@ -137,6 +140,7 @@ class ValidationResult:
         error_message: Human-readable error description (empty if valid).
         sanitized_value: Cleaned value safe for storage.
     """
+
     is_valid: bool
     error_message: str = ""
     sanitized_value: str = ""
@@ -248,6 +252,7 @@ def validate_field_value(
         parts = cleaned.split(".")
         day, month, year = int(parts[0]), int(parts[1]), int(parts[2])
         from datetime import datetime
+
         current_year = datetime.utcnow().year
         if year < 1900 or year > current_year:
             return ValidationResult(
@@ -306,8 +311,7 @@ def validate_field_value(
             return ValidationResult(
                 is_valid=False,
                 error_message=(
-                    f"❌ Неверный код страны. "
-                    f"Допустимые страны: {hint}"
+                    f"❌ Неверный код страны. " f"Допустимые страны: {hint}"
                 ),
                 sanitized_value=code,
             )

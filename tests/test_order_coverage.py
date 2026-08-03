@@ -8,12 +8,18 @@ Targets:
     - _notify_admin_validation_error (admin notification on validation failure)
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from fsm.states import OrderState
-from tests.fixtures.mocks import MockFSMContext, MockMessage, MockBot, MockPhoto, MockCallback
+import pytest
 
+from fsm.states import OrderState
+from tests.fixtures.mocks import (
+    MockBot,
+    MockCallback,
+    MockFSMContext,
+    MockMessage,
+    MockPhoto,
+)
 
 # ══════════════════════════════════════════════════════════════════════
 # process_payment_proof tests
@@ -30,6 +36,7 @@ class TestProcessPaymentProof:
     async def _setup_session(self, clean_user_sessions):
         """Set up a valid user session with a cart, payment method, and total."""
         from handlers.order import get_user_session
+
         session = await get_user_session(123)
         session["cart"] = [
             {"type": "visa", "quantity": 1, "items": [{"full_name": "John Doe"}]}
@@ -40,7 +47,9 @@ class TestProcessPaymentProof:
         return session
 
     @pytest.mark.asyncio
-    async def test_accepts_photo_as_payment_proof(self, _setup_session, clean_user_sessions):
+    async def test_accepts_photo_as_payment_proof(
+        self, _setup_session, clean_user_sessions
+    ):
         """Verify a photo is accepted as valid payment proof."""
         from handlers.order import process_payment_proof
 
@@ -64,7 +73,9 @@ class TestProcessPaymentProof:
         assert mock_send.call_args[1]["payment_proof_file_id"] == "payment_photo.jpg"
 
     @pytest.mark.asyncio
-    async def test_accepts_document_as_payment_proof(self, _setup_session, clean_user_sessions):
+    async def test_accepts_document_as_payment_proof(
+        self, _setup_session, clean_user_sessions
+    ):
         """Verify a PDF document is accepted as valid payment proof."""
         from handlers.order import process_payment_proof
 
@@ -88,7 +99,7 @@ class TestProcessPaymentProof:
     @pytest.mark.asyncio
     async def test_rejects_text_message(self, clean_user_sessions):
         """Verify text without photo/document is rejected."""
-        from handlers.order import process_payment_proof, get_user_session
+        from handlers.order import get_user_session, process_payment_proof
 
         session = await get_user_session(123)
         session["cart"] = [{"type": "visa", "quantity": 1, "items": []}]
@@ -103,9 +114,10 @@ class TestProcessPaymentProof:
 
         assert message._answered_text is not None
         # Should explain that photo/document is required
-        assert any(word in (message._answered_text or "").lower()
-                   for word in ["photo", "фото", "document", "документ", "file", "файл"]), \
-            f"Should ask for photo/document, got: {message._answered_text}"
+        assert any(
+            word in (message._answered_text or "").lower()
+            for word in ["photo", "фото", "document", "документ", "file", "файл"]
+        ), f"Should ask for photo/document, got: {message._answered_text}"
 
     @pytest.mark.asyncio
     async def test_rejects_empty_cart(self, clean_user_sessions):
@@ -125,7 +137,7 @@ class TestProcessPaymentProof:
     @pytest.mark.asyncio
     async def test_rejects_missing_payment_method(self, clean_user_sessions):
         """Verify missing payment method shows error."""
-        from handlers.order import process_payment_proof, get_user_session
+        from handlers.order import get_user_session, process_payment_proof
 
         session = await get_user_session(123)
         session["cart"] = [{"type": "visa", "quantity": 1, "items": []}]
@@ -142,7 +154,9 @@ class TestProcessPaymentProof:
         assert await state.get_state() is None
 
     @pytest.mark.asyncio
-    async def test_handles_manager_notification_failure(self, _setup_session, clean_user_sessions):
+    async def test_handles_manager_notification_failure(
+        self, _setup_session, clean_user_sessions
+    ):
         """Verify graceful handling if send_order_to_manager raises."""
         from handlers.order import process_payment_proof
 
@@ -151,8 +165,10 @@ class TestProcessPaymentProof:
         message.photo = [MockPhoto(file_id="photo.jpg")]
         state = MockFSMContext()
 
-        with patch("utils.router.send_order_to_manager",
-                   AsyncMock(side_effect=RuntimeError("Telegram API error"))):
+        with patch(
+            "utils.router.send_order_to_manager",
+            AsyncMock(side_effect=RuntimeError("Telegram API error")),
+        ):
             with patch("handlers.order.create_order") as mock_create:
                 with patch("handlers.order.create_order_item"):
                     mock_order = MagicMock()
@@ -167,7 +183,9 @@ class TestProcessPaymentProof:
         assert message._answered_text is not None
 
     @pytest.mark.asyncio
-    async def test_creates_order_with_all_data(self, _setup_session, clean_user_sessions):
+    async def test_creates_order_with_all_data(
+        self, _setup_session, clean_user_sessions
+    ):
         """Verify create_order is called with correct parameters."""
         from handlers.order import process_payment_proof
 
@@ -214,15 +232,34 @@ class TestProcessDocumentField:
     async def _setup_field_session(self, clean_user_sessions):
         """Set up a session ready to fill document fields."""
         from handlers.order import get_user_session
+
         session = await get_user_session(123)
         session["current_template"] = {
             "fields": [
-                MagicMock(id="full_name", prompt="Full Name", type="text",
-                          optional=False, max_length=None, type_hint=lambda: "text, max 255"),
-                MagicMock(id="birth_date", prompt="Birth Date", type="date",
-                          optional=False, max_length=None, type_hint=lambda: "DD.MM.YYYY"),
-                MagicMock(id="notes", prompt="Notes", type="optional_text",
-                          optional=True, max_length=None, type_hint=lambda: "optional"),
+                MagicMock(
+                    id="full_name",
+                    prompt="Full Name",
+                    type="text",
+                    optional=False,
+                    max_length=None,
+                    type_hint=lambda: "text, max 255",
+                ),
+                MagicMock(
+                    id="birth_date",
+                    prompt="Birth Date",
+                    type="date",
+                    optional=False,
+                    max_length=None,
+                    type_hint=lambda: "DD.MM.YYYY",
+                ),
+                MagicMock(
+                    id="notes",
+                    prompt="Notes",
+                    type="optional_text",
+                    optional=True,
+                    max_length=None,
+                    type_hint=lambda: "optional",
+                ),
             ],
             "code": "visa",
         }
@@ -237,10 +274,11 @@ class TestProcessDocumentField:
         return session
 
     @pytest.mark.asyncio
-    async def test_accepts_valid_text_field(self, _setup_field_session, clean_user_sessions):
+    async def test_accepts_valid_text_field(
+        self, _setup_field_session, clean_user_sessions
+    ):
         """Verify valid text input is accepted and stored."""
-        from handlers.order import process_document_field
-        from handlers.order import get_user_session
+        from handlers.order import get_user_session, process_document_field
 
         message = MockMessage(text="John Doe", chat_id=123, user_id=123)
         message.bot = MockBot()
@@ -253,10 +291,11 @@ class TestProcessDocumentField:
         assert session["current_field_index"] == 1  # Moved to next field
 
     @pytest.mark.asyncio
-    async def test_rejects_empty_required_field(self, _setup_field_session, clean_user_sessions):
+    async def test_rejects_empty_required_field(
+        self, _setup_field_session, clean_user_sessions
+    ):
         """Verify empty required field shows error and stays on same field."""
-        from handlers.order import process_document_field
-        from handlers.order import get_user_session
+        from handlers.order import get_user_session, process_document_field
 
         # Use a whitespace-only message so message.text is truthy, but
         # raw_value = message.text.strip() becomes empty
@@ -269,14 +308,17 @@ class TestProcessDocumentField:
         session = await get_user_session(123)
         assert session["current_field_index"] == 0  # Stayed on same field
         assert message._answered_text is not None
-        assert "required" in (message._answered_text or "").lower() or "обязательно" in (message._answered_text or "")
+        assert "required" in (
+            message._answered_text or ""
+        ).lower() or "обязательно" in (message._answered_text or "")
         assert "This field is required" in message._answered_text
 
     @pytest.mark.asyncio
-    async def test_skips_optional_field_when_empty(self, _setup_field_session, clean_user_sessions):
+    async def test_skips_optional_field_when_empty(
+        self, _setup_field_session, clean_user_sessions
+    ):
         """Verify optional field is skipped when left empty."""
-        from handlers.order import process_document_field
-        from handlers.order import get_user_session
+        from handlers.order import get_user_session, process_document_field
 
         # Move to the optional field (index 2)
         session = await get_user_session(123)
@@ -303,12 +345,15 @@ class TestProcessDocumentField:
         # Should have moved forward (either to next doc or to delivery)
 
     @pytest.mark.asyncio
-    async def test_rejects_sql_injection_in_field(self, _setup_field_session, clean_user_sessions):
+    async def test_rejects_sql_injection_in_field(
+        self, _setup_field_session, clean_user_sessions
+    ):
         """Verify SQL injection is rejected and admin is notified."""
-        from handlers.order import process_document_field
-        from handlers.order import get_user_session
+        from handlers.order import get_user_session, process_document_field
 
-        message = MockMessage(text="Robert'); DROP TABLE users;--", chat_id=123, user_id=123)
+        message = MockMessage(
+            text="Robert'); DROP TABLE users;--", chat_id=123, user_id=123
+        )
         message.bot = MockBot()
         state = MockFSMContext()
 
@@ -341,10 +386,11 @@ class TestProcessDocumentField:
         assert await state.get_state() is None  # State cleared on error
 
     @pytest.mark.asyncio
-    async def test_transitions_to_delivery_after_last_field(self, _setup_field_session, clean_user_sessions):
+    async def test_transitions_to_delivery_after_last_field(
+        self, _setup_field_session, clean_user_sessions
+    ):
         """Verify after last field, FSM transitions to delivery choice."""
-        from handlers.order import process_document_field
-        from handlers.order import get_user_session
+        from handlers.order import get_user_session, process_document_field
 
         session = await get_user_session(123)
         session["current_field_index"] = 2  # Last field (index 2 out of 3)
@@ -358,8 +404,9 @@ class TestProcessDocumentField:
 
         # After last field, should transition to asking_delivery
         final_state = await state.get_state()
-        assert final_state == OrderState.asking_delivery, \
-            f"Expected asking_delivery, got {final_state}"
+        assert (
+            final_state == OrderState.asking_delivery
+        ), f"Expected asking_delivery, got {final_state}"
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -374,19 +421,21 @@ class TestSaveDelivery:
     async def _delivery_session(self, clean_user_sessions):
         """Set up a session ready for delivery input."""
         from handlers.order import get_user_session
+
         session = await get_user_session(123)
         session["cart"] = [{"type": "visa", "quantity": 1, "items": []}]
         session["currency"] = "EUR"
         return session
 
     @pytest.mark.asyncio
-    async def test_accepts_minimal_delivery(self, _delivery_session, clean_user_sessions):
+    async def test_accepts_minimal_delivery(
+        self, _delivery_session, clean_user_sessions
+    ):
         """Verify delivery with minimum 3 lines is accepted."""
         from handlers.order import save_delivery
 
         message = MockMessage(
-            text="John Doe\n+48123456789\ntest@example.com",
-            chat_id=123, user_id=123
+            text="John Doe\n+48123456789\ntest@example.com", chat_id=123, user_id=123
         )
         message.bot = MockBot()
         state = MockFSMContext()
@@ -397,14 +446,16 @@ class TestSaveDelivery:
         assert await state.get_state() == OrderState.choosing_payment
 
     @pytest.mark.asyncio
-    async def test_accepts_full_delivery_with_address(self, _delivery_session, clean_user_sessions):
+    async def test_accepts_full_delivery_with_address(
+        self, _delivery_session, clean_user_sessions
+    ):
         """Verify delivery with all 4 lines is accepted."""
-        from handlers.order import save_delivery
-        from handlers.order import get_user_session
+        from handlers.order import get_user_session, save_delivery
 
         message = MockMessage(
             text="John Doe\n+48123456789\ntest@example.com\nMain Street 1, Warsaw",
-            chat_id=123, user_id=123
+            chat_id=123,
+            user_id=123,
         )
         message.bot = MockBot()
         state = MockFSMContext()
@@ -421,7 +472,9 @@ class TestSaveDelivery:
         assert session["total_price"] > 0
 
     @pytest.mark.asyncio
-    async def test_rejects_fewer_than_3_lines(self, _delivery_session, clean_user_sessions):
+    async def test_rejects_fewer_than_3_lines(
+        self, _delivery_session, clean_user_sessions
+    ):
         """Verify delivery with less than 3 lines shows format error."""
         from handlers.order import save_delivery
 
@@ -432,10 +485,11 @@ class TestSaveDelivery:
         await save_delivery(message, state)
 
         assert message._answered_text is not None
-        assert "format" in (message._answered_text or "").lower() \
-               or "формат" in (message._answered_text or "").lower() \
-               or "error" in (message._answered_text or "").lower(), \
-            f"Should show format error, got: {message._answered_text}"
+        assert (
+            "format" in (message._answered_text or "").lower()
+            or "формат" in (message._answered_text or "").lower()
+            or "error" in (message._answered_text or "").lower()
+        ), f"Should show format error, got: {message._answered_text}"
         # The handler shows error text but clears state as well (same pattern as other fallbacks)
         # Some handlers do NOT keep the state for retry on format errors
         assert message._answered_text is not None
@@ -443,12 +497,10 @@ class TestSaveDelivery:
     @pytest.mark.asyncio
     async def test_empty_lines_use_dash(self, _delivery_session, clean_user_sessions):
         """Verify missing address line defaults to '-'."""
-        from handlers.order import save_delivery
-        from handlers.order import get_user_session
+        from handlers.order import get_user_session, save_delivery
 
         message = MockMessage(
-            text="John\n+48 123\nemail@test.com",
-            chat_id=123, user_id=123
+            text="John\n+48 123\nemail@test.com", chat_id=123, user_id=123
         )
         message.bot = MockBot()
         state = MockFSMContext()
@@ -459,13 +511,14 @@ class TestSaveDelivery:
         assert session["delivery"]["address"] == "-"
 
     @pytest.mark.asyncio
-    async def test_sets_state_to_choosing_payment(self, _delivery_session, clean_user_sessions):
+    async def test_sets_state_to_choosing_payment(
+        self, _delivery_session, clean_user_sessions
+    ):
         """Verify FSM transitions to choosing_payment."""
         from handlers.order import save_delivery
 
         message = MockMessage(
-            text="Name\n+48\nemail@test.com\nAddress",
-            chat_id=123, user_id=123
+            text="Name\n+48\nemail@test.com\nAddress", chat_id=123, user_id=123
         )
         message.bot = MockBot()
         state = MockFSMContext()
@@ -517,7 +570,7 @@ class TestGenerateOrderId:
         mock_query = MagicMock()
         mock_query.filter.return_value.first.side_effect = [
             MagicMock(),  # First call: collision found
-            None,         # Second call: no collision
+            None,  # Second call: no collision
         ]
 
         with patch("handlers.order.SessionLocal") as mock_session:

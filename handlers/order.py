@@ -16,7 +16,7 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from config import DELIVERY_PRICE_PLN, DELIVERY_PRICE_EUR
+from config import DELIVERY_PRICE_EUR, DELIVERY_PRICE_PLN
 
 # Import DB functions (lazy — imported inside handlers to avoid circular imports)
 from db.crud import SessionLocal, create_order, create_order_item
@@ -337,7 +337,7 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
     # Build current field indicator with visual progress bar
     field_indicator = f"📝 Поле {current_index + 1} из {len(fields)}"
     progress_bar = "█" * (current_index + 1) + "░" * (len(fields) - current_index - 1)
-    
+
     await message.answer(
         f"{progress_str}\n"
         f"{summary_text}\n"
@@ -391,9 +391,7 @@ async def _notify_admin_validation_error(
             f"💬 Введено: `{sanitize_for_telegram(raw_value[:200])}`\n"
             f"❌ Ошибка: {error_message}"
         )
-        await message.bot.send_message(
-            chat_id=target, text=text, parse_mode="Markdown"
-        )
+        await message.bot.send_message(chat_id=target, text=text, parse_mode="Markdown")
     except Exception as e:
         logger.warning(f"Failed to notify admin about validation error: {e}")
 
@@ -442,9 +440,7 @@ async def process_document_field(message: Message, state: FSMContext):
 
     # Required field — reject empty
     if not field.optional and not raw_value:
-        await message.answer(
-            "❌ This field is required. Please enter a value."
-        )
+        await message.answer("❌ This field is required. Please enter a value.")
         return
 
     # ── Validate the value ──────────────────────────────────────────
@@ -458,7 +454,7 @@ async def process_document_field(message: Message, state: FSMContext):
     )
 
     if not result.is_valid:
-         # Notify admin about the validation failure
+        # Notify admin about the validation failure
         await _notify_admin_validation_error(
             message=message,
             user_id=user_id,

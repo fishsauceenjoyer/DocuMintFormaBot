@@ -30,6 +30,7 @@ class Field:
     def type_hint(self) -> str:
         """Return a short type/length hint shown to the user under the prompt."""
         from data.business_config import ALLOWED_COUNTRIES_HINT
+
         hints = {
             "text": f"текст, макс. {self.max_length or 255} символов",
             "date": "дата в формате ДД.ММ.ГГГГ (год 1900-текущий)",

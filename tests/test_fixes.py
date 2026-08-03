@@ -15,8 +15,8 @@ from handlers.order import process_document_choice
 from handlers.start import callback_cancel_to_menu
 from utils import router
 
-
 # ── 1. Multi-part document codes ──────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_process_document_choice_criminal_record_check(monkeypatch):
@@ -25,7 +25,8 @@ async def test_process_document_choice_criminal_record_check(monkeypatch):
     Regression: the old ``callback.data.split("_")[1]`` returned only
     ``criminal``, causing a "Template not found" error.
     """
-    from aiogram.types import CallbackQuery, User, Message, Chat
+    from aiogram.types import CallbackQuery, Chat, Message, User
+
     from fsm.states import OrderState
     from templates.documents import get_template
 
@@ -82,6 +83,7 @@ async def test_process_document_choice_single_word_code(monkeypatch):
     assert parts[1] == "visa"
 
     from templates.documents import get_template
+
     template = get_template("visa")
     assert template is not None
     assert "Visa application" in template["name_en"]
@@ -94,10 +96,12 @@ async def test_process_document_choice_apostille():
     assert parts[1] == "apostille"
 
     from templates.documents import get_template
+
     assert get_template("apostille") is not None
 
 
 # ── 2. Markdown escaping ──────────────────────────────────────────────
+
 
 class TestEscapeMarkdown:
     """Verify that ``_escape_markdown`` prevents Telegram parse errors."""
@@ -148,6 +152,7 @@ class TestEscapeMarkdown:
 
 # ── 3. cancel_to_menu sends a new message ─────────────────────────────
 
+
 def test_cancel_to_menu_logic():
     """Verify the key logic change in ``cancel_to_menu``.
 
@@ -159,23 +164,25 @@ def test_cancel_to_menu_logic():
     """
     # Verify the handler source uses send_message, not edit_text
     import inspect
+
     source = inspect.getsource(callback_cancel_to_menu)
 
     # The fix must call bot.send_message (new message) not edit_text (edit old)
-    assert "bot.send_message" in source, \
-        "cancel_to_menu must use bot.send_message to send a new message"
+    assert (
+        "bot.send_message" in source
+    ), "cancel_to_menu must use bot.send_message to send a new message"
 
     # The fix must use the welcome text (same as /start)
-    assert 'i18n.get("welcome"' in source, \
-        "cancel_to_menu must use welcome text (same as /start)"
+    assert (
+        'i18n.get("welcome"' in source
+    ), "cancel_to_menu must use welcome text (same as /start)"
 
     # The old approach used edit_text — ensure it's NOT the primary path
     # (edit_text may still appear in delete attempt but not for the menu)
-    lines = source.split('\n')
-    edit_text_lines = [l for l in lines if 'edit_text' in l]
-    non_delete_edit = [l for l in edit_text_lines if 'delete' not in l]
+    lines = source.split("\n")
+    edit_text_lines = [l for l in lines if "edit_text" in l]
+    non_delete_edit = [l for l in edit_text_lines if "delete" not in l]
     # Any remaining edit_text should only be error handling or delete attempts
     assert len(non_delete_edit) == 0 or all(
-        'error' in l.lower() or 'except' in l or '#' in l
-        for l in non_delete_edit
+        "error" in l.lower() or "except" in l or "#" in l for l in non_delete_edit
     ), "cancel_to_menu should not use edit_text for the main menu message"

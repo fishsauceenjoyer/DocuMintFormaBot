@@ -20,8 +20,8 @@ to mocks without any test failure.
 import asyncio
 import datetime
 import logging
-import socket
 import os
+import socket
 from typing import Any, Dict, Optional
 
 import pytest
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 # ── CLI option ──────────────────────────────────────────────────────────
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Register a ``--with-real-api`` flag for live Telegram API tests."""
@@ -43,6 +44,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 # ── Connectivity detection ──────────────────────────────────────────────
+
 
 def _telegram_api_reachable() -> bool:
     """Check whether ``api.telegram.org`` is reachable via DNS + TCP.
@@ -351,5 +353,3 @@ def clean_admin_orders():
     orders.clear()
     yield
     orders.clear()
-
-

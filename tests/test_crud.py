@@ -5,6 +5,7 @@ All tests are synchronous (SQLAlchemy operations are not async).
 """
 
 import json
+
 import pytest
 
 from tests.fixtures.db_fixtures import mock_db_session  # noqa: F401
@@ -17,7 +18,9 @@ class TestUserCRUD:
         """Verify a user can be created."""
         from db.crud import create_user, get_user_by_username
 
-        user = create_user(mock_db_session, username="testuser", chat_id=12345, role="user")
+        user = create_user(
+            mock_db_session, username="testuser", chat_id=12345, role="user"
+        )
         assert user.username == "testuser"
         assert user.chat_id == 12345
         assert user.role == "user"
@@ -94,10 +97,9 @@ class TestDocumentTypeCRUD:
 
     def test_get_all_document_types(self, mock_db_session):  # noqa: F811
         """Verify all active document types are returned."""
-        from db.crud import get_all_document_types
-
         # init_default_document_types should have created them
-        from db.crud import init_default_document_types
+        from db.crud import get_all_document_types, init_default_document_types
+
         init_default_document_types(mock_db_session)
 
         types = get_all_document_types(mock_db_session)
@@ -122,8 +124,15 @@ class TestOrderCRUD:
             status="pending",
             payment_method="blik",
             payment_proof_file_id="file_id_123",
-            delivery={"name": "Test User", "phone": "+48123456789", "email": "test@test.com", "address": "Test St 1"},
-            documents=[{"type": "visa", "quantity": 1, "items": [{"full_name": "Test"}]}],
+            delivery={
+                "name": "Test User",
+                "phone": "+48123456789",
+                "email": "test@test.com",
+                "address": "Test St 1",
+            },
+            documents=[
+                {"type": "visa", "quantity": 1, "items": [{"full_name": "Test"}]}
+            ],
         )
 
     def test_create_order(self, mock_db_session):  # noqa: F811
@@ -159,6 +168,7 @@ class TestOrderCRUD:
         order2 = self._create_test_order(mock_db_session, "ORDER_USER_2")
         # Manually set user_id
         from db.crud import SessionLocal
+
         order2.user_id = 1
         mock_db_session.commit()
 
@@ -198,6 +208,7 @@ class TestOrderCRUD:
 
         self._create_test_order(mock_db_session, "ORDER_STAT_1")
         from db.crud import create_order
+
         create_order(
             db=mock_db_session,
             order_id="ORDER_STAT_2",
@@ -215,7 +226,7 @@ class TestOrderCRUD:
 
     def test_get_order_stats(self, mock_db_session):  # noqa: F811
         """Verify order statistics are calculated correctly."""
-        from db.crud import get_order_stats, create_order
+        from db.crud import create_order, get_order_stats
 
         # Create orders with different statuses
         create_order(mock_db_session, "ORDER_S_1", 1, 100, "pending")
@@ -253,17 +264,20 @@ class TestInitDB:
 
     def test_init_db_creates_tables(self, mock_db_session):  # noqa: F811
         """Verify init_db creates all tables."""
-        from db.crud import init_db
-
         # Tables should already be created by the fixture,
         # but init_db should not crash
         import importlib
+
+        from db.crud import init_db
+
         with pytest.MonkeyPatch().context() as mp:
             mp.setattr("db.crud.SessionLocal", lambda: mock_db_session)
             # Just verify init_default_document_types works
             from db.crud import init_default_document_types
+
             init_default_document_types(mock_db_session)
 
         from db.crud import get_all_document_types
+
         types = get_all_document_types(mock_db_session)
         assert len(types) >= 4
