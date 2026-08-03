@@ -1,7 +1,7 @@
 # Test Suite Fix — branch `test/audit-and-fix-test-suite`
 
 ## Quick summary
-- Base branch: `master`
+- Base branch: `feat/payment-methods-rename`
 - Goal: raise the automated QA signal of the project so it can be used as a Senior QA portfolio piece.
 - Result: PR is merge-ready. Last full run: **256 passed, 1 skipped, 1 failed**.
 - Note: the 1 remaining failure is a **test bug**, not a product bug; see `Failed tests` below.

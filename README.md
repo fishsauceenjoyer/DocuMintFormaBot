@@ -119,11 +119,28 @@ Edit `.env` in any text editor. Minimum required changes:
 | `ADMIN_USERNAME` | Your Telegram username | Open Telegram → Settings → Username (e.g. `@yourname`) |
 | `ROUTING_DEFAULT` | Chat ID for manager | See instructions below |
 
-**How to get a chat ID:**
-1. Add [@userinfobot](https://t.me/userinfobot) to your contacts
-2. Forward any message to it → it replies with your chat ID
-3. Create a **private group** → add the bot → send `/id` → get group chat ID
-4. Use this ID in `ROUTING_DEFAULT` and other `ROUTING_*` variables
+**⚠️ Important: Create manager chats BEFORE setting routing IDs**
+
+1. Create a **private Telegram group** for each document type (or one common group)
+2. Add your bot `@DocuMintFormaBot` to the group as an **administrator**
+3. Send any message in the group (e.g. `/start`)
+4. Get the group chat ID:
+   - Forward that message to [@userinfobot](https://t.me/userinfobot) — it will show the chat ID
+   - Or use the bot's own logging: after sending a message in the group, check the bot console output for `Chat ID: -100xxxxxxxxxx`
+5. **Critical:** Group chat IDs for bots always start with `-100` (e.g. `-100123456789`). Do NOT use personal chat IDs.
+6. Paste the IDs into `.env`:
+   ```env
+   ROUTING_VISA=-100123456789
+   ROUTING_PASSPORT=-100987654321
+   ROUTING_CRIMINAL_RECORD=-100123456788
+   ROUTING_APOSTILLE=-100123456787
+   ROUTING_DEFAULT=-100123456786
+   ```
+
+**Common pitfalls:**
+- ❌ Don't use your personal Telegram user ID (e.g. `123456789`) — the bot cannot message users who haven't started it
+- ❌ Don't use numeric IDs without `-100` prefix for groups — Telegram API requires the supergroup format
+- ✅ Always add the bot to the group first and grant it admin rights
 
 ### 3. Run
 
@@ -404,7 +421,7 @@ make run         # uv run python main.py
 
 ## Quality Pipeline (CI/CD)
 
-The repository uses **AI-Driven Quality Gates** on every push to `main` and on
+The repository uses **AI-Driven Quality Gates** on every push to `feat/payment-methods-rename` and on
 every Pull Request. The pipeline runs two jobs:
 
 | Job | What it checks | Tools |
@@ -509,6 +526,14 @@ On Windows, VS Code may store your token in **Windows Credential Manager**:
 3. Edit and replace the password with your new token
 
 ---
+
+## TODO / Roadmap
+
+- [ ] **LLM-Driven QA Automation**: integrate custom prompt roles (`prompts/`) into the CI pipeline to auto-generate tests, review diffs, and validate `business_config.py` changes against requirements
+- [ ] **Mutation Testing**: add `mutmut` to the quality gates to measure real test effectiveness and avoid the "pesticide paradox" (tests passing but not catching regressions)
+- [ ] **Security Reporting**: integrate Bandit/SAST results into GitHub Security tab and auto-comment PRs with vulnerability summaries
+- [ ] **Database Seeding**: add CLI command `uv run python scripts/seed_db.py` for quick demo data initialization
+- [ ] **Telegram Payment Integration**: replace demo payment methods with real Telegram Payments / Stripe / LiqPay
 
 ## License
 
