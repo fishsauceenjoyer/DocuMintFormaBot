@@ -161,7 +161,7 @@ class TestLoggingMiddleware:
         from utils.middleware import LoggingMiddleware
 
         user = User(id=123, is_bot=False, first_name="Test", username="testuser")
-        chat = Chat(id=123, type="private")
+        _ = Chat(id=123, type="private")
         callback = CallbackQuery(
             id="cb_123",
             from_user=user,
