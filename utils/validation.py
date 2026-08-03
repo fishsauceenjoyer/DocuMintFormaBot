@@ -250,7 +250,9 @@ def validate_field_value(
             )
         # Validate date is real
         parts = cleaned.split(".")
-        day, month, year = int(parts[0]), int(parts[1]), int(parts[2])
+        _ = int(parts[0])
+        _ = int(parts[1])
+        year = int(parts[2])
         from datetime import datetime
 
         current_year = datetime.utcnow().year
