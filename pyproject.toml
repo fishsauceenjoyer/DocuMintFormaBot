@@ -61,7 +61,7 @@ markers = [
     "e2e: end-to-end flow tests",
 ]
 asyncio_mode = "auto"
-addopts = "-v --tb=short --cov=tests --cov-report=term-missing --cov-report=html"
+addopts = "-v --tb=short --cov --cov-report=term-missing --cov-report=html"
 
 
 [tool.coverage.run]
@@ -71,6 +71,7 @@ omit = [
     "*/migrations/*",
     "*/__pycache__/*",
 ]
+disable_warnings = ["module-not-imported"]
 
 [tool.coverage.report]
 exclude_lines = [
