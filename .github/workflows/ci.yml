@@ -53,4 +53,4 @@ jobs:
 
       - name: 🟢 Запуск тестов и проверка покрытия (Coverage)
         run: |
-          uv run pytest -v --cov=. --cov-report=term-missing
+          uv run pytest -v --cov --cov-report=term-missing
