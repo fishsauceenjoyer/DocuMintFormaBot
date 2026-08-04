@@ -286,25 +286,25 @@ def clean_user_sessions():
 
 
 @pytest.fixture
-def mock_order_db(monkeypatch):
-    """Patch ``handlers.order.SessionLocal`` to use an in-memory SQLite DB.
+async def mock_order_db(monkeypatch):
+    """Patch ``handlers.order.AsyncSessionLocal`` to use an in-memory SQLite DB.
 
     Creates all tables from ``db.models.Base.metadata`` so handlers that
     touch the database (e.g. ``_generate_order_id``, ``process_payment_proof``)
     run against a clean in-memory schema instead of the real ``bot.db``.
     """
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from db.models import Base
 
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    TestSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    TestSession = async_sessionmaker(engine, expire_on_commit=False)
 
     import handlers.order as order_module
 
-    monkeypatch.setattr(order_module, "SessionLocal", TestSession)
+    monkeypatch.setattr(order_module, "AsyncSessionLocal", TestSession)
     return TestSession
 
 
@@ -312,21 +312,20 @@ def mock_order_db(monkeypatch):
 
 
 @pytest.fixture
-def test_db(tmp_path, monkeypatch):
+async def test_db(tmp_path, monkeypatch):
     """Spin up a temporary SQLite database and apply all Alembic migrations.
 
     Creates a file-based SQLite DB in the pytest ``tmp_path``, runs
     ``alembic upgrade head`` so the schema matches production, then patches
-    ``handlers.order.SessionLocal`` (and ``db.crud.SessionLocal``) to use a
-    session factory bound to the test database.
+    ``handlers.order.AsyncSessionLocal`` (and ``db.crud.AsyncSessionLocal``)
+    to use an async session factory bound to the test database.
 
-    Yields a ``sessionmaker`` so tests can open their own sessions to assert
-    on the persisted data.
+    Yields an ``async_sessionmaker`` so tests can open their own sessions to
+    assert on the persisted data.
     """
     import importlib
 
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     db_file = tmp_path / "integration_test.db"
     db_url = f"sqlite:///{db_file}"
@@ -352,23 +351,23 @@ def test_db(tmp_path, monkeypatch):
     alembic_cfg.set_main_option("sqlalchemy.url", db_url)
     command.upgrade(alembic_cfg, "head")
 
-    # Build a session factory bound to the freshly-migrated test database.
-    engine = create_engine(db_url)
-    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    # Build an async session factory bound to the freshly-migrated test database.
+    engine = create_async_engine(f"sqlite+aiosqlite:///{db_file}")
+    TestSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
-    # Patch the SessionLocal used by the order handler (imported at module
+    # Patch the AsyncSessionLocal used by the order handler (imported at module
     # load time) so DB writes go to the test database.
     import handlers.order as order_module
 
-    monkeypatch.setattr(order_module, "SessionLocal", TestSessionLocal)
+    monkeypatch.setattr(order_module, "AsyncSessionLocal", TestSessionLocal)
 
-    # Also patch db.crud.SessionLocal for any code that imports it lazily.
-    monkeypatch.setattr(crud_module, "SessionLocal", TestSessionLocal)
+    # Also patch db.crud.AsyncSessionLocal for any code that imports it lazily.
+    monkeypatch.setattr(crud_module, "AsyncSessionLocal", TestSessionLocal)
 
     try:
         yield TestSessionLocal
     finally:
-        engine.dispose()
+        await engine.dispose()
 
 
 @pytest.fixture

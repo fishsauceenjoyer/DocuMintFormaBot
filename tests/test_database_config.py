@@ -12,7 +12,10 @@ def test_database_engine_uses_configured_database_url(monkeypatch, tmp_path):
     importlib.reload(crud)
 
     try:
-        assert str(crud.engine.url) == database_url
+        # The async engine converts sqlite:/// → sqlite+aiosqlite:///
+        assert str(crud.async_engine.sync_engine.url) == database_url.replace(
+            "sqlite://", "sqlite+aiosqlite://"
+        )
     finally:
         monkeypatch.setattr(config, "DATABASE_URL", original_url)
         importlib.reload(crud)
@@ -26,7 +29,7 @@ def test_database_engine_works_with_postgresql_url(monkeypatch):
     monkeypatch.setattr(config, "DATABASE_URL", pg_url)
     try:
         importlib.reload(crud)
-        assert crud.engine.dialect.name == "postgresql"
+        assert crud.async_engine.sync_engine.dialect.name == "postgresql"
     finally:
         monkeypatch.setattr(config, "DATABASE_URL", original_url)
         importlib.reload(crud)

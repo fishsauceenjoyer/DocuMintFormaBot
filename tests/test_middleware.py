@@ -37,13 +37,23 @@ class TestRegistrationMiddleware:
         middleware = RegistrationMiddleware()
         mock_handler = AsyncMock()
 
-        with patch("utils.middleware.get_user_by_username", return_value=None):
-            with patch("utils.middleware.create_user") as mock_create_user:
-                await middleware(mock_handler, message, {})
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
 
-        mock_create_user.assert_called_once()
-        assert mock_create_user.call_args[1]["username"] == "newuser"
-        assert mock_create_user.call_args[1]["chat_id"] == 123
+        with patch("utils.middleware.AsyncSessionLocal", return_value=mock_db):
+            with patch(
+                "utils.middleware.get_user_by_username",
+                new=AsyncMock(return_value=None),
+            ):
+                with patch(
+                    "utils.middleware.create_user", new=AsyncMock()
+                ) as mock_create_user:
+                    await middleware(mock_handler, message, {})
+
+        mock_create_user.assert_awaited_once()
+        assert mock_create_user.call_args.kwargs["username"] == "newuser"
+        assert mock_create_user.call_args.kwargs["chat_id"] == 123
         mock_handler.assert_awaited_once_with(message, {})
 
     @pytest.mark.asyncio
@@ -67,9 +77,19 @@ class TestRegistrationMiddleware:
         middleware = RegistrationMiddleware()
         mock_handler = AsyncMock()
 
-        with patch("utils.middleware.get_user_by_username", return_value=existing_user):
-            with patch("utils.middleware.create_user") as mock_create_user:
-                await middleware(mock_handler, message, {})
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
+
+        with patch("utils.middleware.AsyncSessionLocal", return_value=mock_db):
+            with patch(
+                "utils.middleware.get_user_by_username",
+                new=AsyncMock(return_value=existing_user),
+            ):
+                with patch(
+                    "utils.middleware.create_user", new=AsyncMock()
+                ) as mock_create_user:
+                    await middleware(mock_handler, message, {})
 
         mock_create_user.assert_not_called()
         mock_handler.assert_awaited_once_with(message, {})
@@ -95,12 +115,23 @@ class TestRegistrationMiddleware:
         middleware = RegistrationMiddleware()
         mock_handler = AsyncMock()
 
-        with patch("utils.middleware.get_user_by_username", return_value=existing_user):
-            with patch("utils.middleware.create_user") as mock_create_user:
-                await middleware(mock_handler, message, {})
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
+
+        with patch("utils.middleware.AsyncSessionLocal", return_value=mock_db):
+            with patch(
+                "utils.middleware.get_user_by_username",
+                new=AsyncMock(return_value=existing_user),
+            ):
+                with patch(
+                    "utils.middleware.create_user", new=AsyncMock()
+                ) as mock_create_user:
+                    await middleware(mock_handler, message, {})
 
         mock_create_user.assert_not_called()
         assert existing_user.chat_id == 456
+        mock_db.commit.assert_awaited_once()
         mock_handler.assert_awaited_once_with(message, {})
 
     @pytest.mark.asyncio
@@ -119,9 +150,18 @@ class TestRegistrationMiddleware:
         middleware = RegistrationMiddleware()
         mock_handler = AsyncMock()
 
-        with patch("utils.middleware.get_user_by_username") as mock_get:
-            with patch("utils.middleware.create_user") as mock_create:
-                await middleware(mock_handler, message, {})
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
+
+        with patch("utils.middleware.AsyncSessionLocal", return_value=mock_db):
+            with patch(
+                "utils.middleware.get_user_by_username", new=AsyncMock()
+            ) as mock_get:
+                with patch(
+                    "utils.middleware.create_user", new=AsyncMock()
+                ) as mock_create:
+                    await middleware(mock_handler, message, {})
 
         mock_get.assert_not_called()  # Should skip DB check
         mock_create.assert_not_called()

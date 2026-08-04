@@ -58,13 +58,20 @@ class TestProcessPaymentProof:
         message.photo = [MockPhoto(file_id="payment_photo.jpg")]
         state = MockFSMContext()
 
-        with patch("utils.router.send_order_to_manager", AsyncMock()) as mock_send:
-            with patch("handlers.order.create_order") as mock_create:
-                with patch("handlers.order.create_order_item"):
-                    mock_order = MagicMock()
-                    mock_order.id = 1
-                    mock_create.return_value = mock_order
-                    await process_payment_proof(message, state)
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
+
+        with patch("handlers.order.AsyncSessionLocal", return_value=mock_db):
+            with patch("utils.router.send_order_to_manager", AsyncMock()) as mock_send:
+                with patch(
+                    "handlers.order.create_order", new=AsyncMock()
+                ) as mock_create:
+                    with patch("handlers.order.create_order_item", new=AsyncMock()):
+                        mock_order = MagicMock()
+                        mock_order.id = 1
+                        mock_create.return_value = mock_order
+                        await process_payment_proof(message, state)
 
         assert mock_send.called, "Order must be sent to manager"
         assert mock_create.called, "Order must be saved to database"
@@ -85,13 +92,20 @@ class TestProcessPaymentProof:
         message.document.file_id = "receipt.pdf"
         state = MockFSMContext()
 
-        with patch("utils.router.send_order_to_manager", AsyncMock()) as mock_send:
-            with patch("handlers.order.create_order") as mock_create:
-                with patch("handlers.order.create_order_item"):
-                    mock_order = MagicMock()
-                    mock_order.id = 1
-                    mock_create.return_value = mock_order
-                    await process_payment_proof(message, state)
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
+
+        with patch("handlers.order.AsyncSessionLocal", return_value=mock_db):
+            with patch("utils.router.send_order_to_manager", AsyncMock()) as mock_send:
+                with patch(
+                    "handlers.order.create_order", new=AsyncMock()
+                ) as mock_create:
+                    with patch("handlers.order.create_order_item", new=AsyncMock()):
+                        mock_order = MagicMock()
+                        mock_order.id = 1
+                        mock_create.return_value = mock_order
+                        await process_payment_proof(message, state)
 
         assert mock_send.called
         assert mock_send.call_args[1]["payment_proof_file_id"] == "receipt.pdf"
@@ -165,17 +179,24 @@ class TestProcessPaymentProof:
         message.photo = [MockPhoto(file_id="photo.jpg")]
         state = MockFSMContext()
 
-        with patch(
-            "utils.router.send_order_to_manager",
-            AsyncMock(side_effect=RuntimeError("Telegram API error")),
-        ):
-            with patch("handlers.order.create_order") as mock_create:
-                with patch("handlers.order.create_order_item"):
-                    mock_order = MagicMock()
-                    mock_order.id = 1
-                    mock_create.return_value = mock_order
-                    # Should not raise — must handle gracefully
-                    await process_payment_proof(message, state)
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
+
+        with patch("handlers.order.AsyncSessionLocal", return_value=mock_db):
+            with patch(
+                "utils.router.send_order_to_manager",
+                AsyncMock(side_effect=RuntimeError("Telegram API error")),
+            ):
+                with patch(
+                    "handlers.order.create_order", new=AsyncMock()
+                ) as mock_create:
+                    with patch("handlers.order.create_order_item", new=AsyncMock()):
+                        mock_order = MagicMock()
+                        mock_order.id = 1
+                        mock_create.return_value = mock_order
+                        # Should not raise — must handle gracefully
+                        await process_payment_proof(message, state)
 
         # Order must still be saved even if notification failed
         assert mock_create.called, "Order must be saved even if notification fails"
@@ -194,13 +215,20 @@ class TestProcessPaymentProof:
         message.photo = [MockPhoto(file_id="photo.jpg")]
         state = MockFSMContext()
 
-        with patch("utils.router.send_order_to_manager", AsyncMock()):
-            with patch("handlers.order.create_order") as mock_create:
-                with patch("handlers.order.create_order_item"):
-                    mock_order = MagicMock()
-                    mock_order.id = 1
-                    mock_create.return_value = mock_order
-                    await process_payment_proof(message, state)
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
+
+        with patch("handlers.order.AsyncSessionLocal", return_value=mock_db):
+            with patch("utils.router.send_order_to_manager", AsyncMock()):
+                with patch(
+                    "handlers.order.create_order", new=AsyncMock()
+                ) as mock_create:
+                    with patch("handlers.order.create_order_item", new=AsyncMock()):
+                        mock_order = MagicMock()
+                        mock_order.id = 1
+                        mock_create.return_value = mock_order
+                        await process_payment_proof(message, state)
 
         call_kwargs = mock_create.call_args[1]
         assert call_kwargs["user_id"] == 123
@@ -567,17 +595,18 @@ class TestGenerateOrderId:
 
         # Mock the first call to find an existing order (collision),
         # then return None for subsequent calls
-        mock_query = MagicMock()
-        mock_query.filter.return_value.first.side_effect = [
+        mock_scalar = MagicMock()
+        mock_scalar.scalar_one_or_none.side_effect = [
             MagicMock(),  # First call: collision found
             None,  # Second call: no collision
         ]
 
-        with patch("handlers.order.SessionLocal") as mock_session:
-            mock_db = MagicMock()
-            mock_db.query.return_value = mock_query
-            mock_session.return_value = mock_db
+        mock_db = AsyncMock()
+        mock_db.execute.return_value = mock_scalar
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
 
+        with patch("handlers.order.AsyncSessionLocal", return_value=mock_db):
             order_id = await _generate_order_id()
 
             assert order_id is not None

@@ -19,7 +19,6 @@ from handlers.order import router as order_router
 from handlers.start import router as start_router
 
 validate_config()
-init_db()
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +38,9 @@ async def main() -> None:
     and unfinished user flows are lost after process restart.
     """
     logger.info("Starting bot...")
+
+    # Initialize the database (async engine + default document types)
+    await init_db()
 
     # Initialize storage — prefer Redis in production, fallback to MemoryStorage
     redis_url = os.getenv("REDIS_URL")

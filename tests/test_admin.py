@@ -16,7 +16,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -369,7 +369,6 @@ class TestCmdOrders:
         message = _admin_message("/orders")
         state = MockFSMContext()
 
-        mock_db = MagicMock()
         mock_order_1 = MagicMock()
         mock_order_1.order_id = "ORDER_001"
         mock_order_1.status = "paid"
@@ -379,14 +378,17 @@ class TestCmdOrders:
         mock_order_2.status = "completed"
         mock_order_2.total_price = 200
 
-        mock_db.query.return_value.order_by.return_value.all.return_value = [
-            mock_order_1,
-            mock_order_2,
-        ]
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
 
         with patch("utils.auth.is_admin", return_value=True):
-            with patch("db.crud.SessionLocal", return_value=mock_db):
-                await cmd_orders_list(message, state)
+            with patch("db.crud.AsyncSessionLocal", return_value=mock_db):
+                with patch(
+                    "db.crud.get_all_orders",
+                    new=AsyncMock(return_value=[mock_order_1, mock_order_2]),
+                ):
+                    await cmd_orders_list(message, state)
 
         assert "ORDER_001" in (message._answered_text or "")
         assert "ORDER_002" in (message._answered_text or "")
@@ -401,12 +403,14 @@ class TestCmdOrders:
         message = _admin_message("/orders")
         state = MockFSMContext()
 
-        mock_db = MagicMock()
-        mock_db.query.return_value.order_by.return_value.all.return_value = []
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
 
         with patch("utils.auth.is_admin", return_value=True):
-            with patch("db.crud.SessionLocal", return_value=mock_db):
-                await cmd_orders_list(message, state)
+            with patch("db.crud.AsyncSessionLocal", return_value=mock_db):
+                with patch("db.crud.get_all_orders", new=AsyncMock(return_value=[])):
+                    await cmd_orders_list(message, state)
 
         assert "нет" in (message._answered_text or "").lower()
 
@@ -424,12 +428,27 @@ class TestCmdStats:
 
         message = _admin_message("/stats")
 
-        mock_db = MagicMock()
-        mock_db.query.return_value.count.side_effect = [10, 2, 3, 1, 1, 1, 1, 1]
+        mock_stats = {
+            "total": 10,
+            "pending": 2,
+            "paid": 3,
+            "processing": 1,
+            "ready": 1,
+            "shipped": 1,
+            "completed": 1,
+            "cancelled": 1,
+        }
+
+        mock_db = AsyncMock()
+        mock_db.__aenter__.return_value = mock_db
+        mock_db.__aexit__.return_value = False
 
         with patch("utils.auth.is_admin", return_value=True):
-            with patch("db.crud.SessionLocal", return_value=mock_db):
-                await cmd_stats(message)
+            with patch("db.crud.AsyncSessionLocal", return_value=mock_db):
+                with patch(
+                    "db.crud.get_order_stats", new=AsyncMock(return_value=mock_stats)
+                ):
+                    await cmd_stats(message)
 
         assert "Всего" in (message._answered_text or "")
         assert "10" in (message._answered_text or "")

@@ -140,13 +140,18 @@ async def test_e2e_full_order_flow(clean_user_sessions, mock_order_db):
     msg3.bot = MockBot()
     msg3.photo = [MockPhoto(file_id="proof_screenshot.jpg")]
 
-    with patch("utils.router.send_order_to_manager", AsyncMock()) as mock_send:
-        with patch("handlers.order.create_order") as mock_create:
-            with patch("handlers.order.create_order_item"):
-                mock_order = MagicMock()
-                mock_order.id = 1
-                mock_create.return_value = mock_order
-                await process_payment_proof(msg3, state)
+    mock_db = AsyncMock()
+    mock_db.__aenter__.return_value = mock_db
+    mock_db.__aexit__.return_value = False
+
+    with patch("handlers.order.AsyncSessionLocal", return_value=mock_db):
+        with patch("utils.router.send_order_to_manager", AsyncMock()) as mock_send:
+            with patch("handlers.order.create_order", new=AsyncMock()) as mock_create:
+                with patch("handlers.order.create_order_item", new=AsyncMock()):
+                    mock_order = MagicMock()
+                    mock_order.id = 1
+                    mock_create.return_value = mock_order
+                    await process_payment_proof(msg3, state)
 
     # ── Final assertions ────────────────────────────────────────────
     # Order must be saved

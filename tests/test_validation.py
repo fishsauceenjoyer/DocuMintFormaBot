@@ -194,9 +194,9 @@ class TestValidateFieldValue:
         assert result.is_valid is False
 
     def test_date_year_out_of_range(self):
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        current_year = datetime.utcnow().year
+        current_year = datetime.now(timezone.utc).year
         result = validate_field_value(f"01.01.1899", "date", field_name="birth_date")
         assert result.is_valid is False
         assert "Год" in result.error_message
@@ -204,9 +204,9 @@ class TestValidateFieldValue:
         assert str(current_year) in result.error_message
 
     def test_date_year_in_future(self):
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        current_year = datetime.utcnow().year
+        current_year = datetime.now(timezone.utc).year
         future_year = current_year + 1
         result = validate_field_value(
             f"01.01.{future_year}", "date", field_name="birth_date"
