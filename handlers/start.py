@@ -163,9 +163,11 @@ async def callback_cancel_to_menu(callback: CallbackQuery, state: FSMContext):
         )
 
     await callback.answer()
-    # Try to delete the old message to keep chat clean, but only if it's accessible
+    # Try to delete the old message to keep chat clean, but only if it's accessible.
+    # This is best-effort: the message may already be deleted or the bot may lack
+    # permission, so we intentionally swallow the exception.
     try:
         if isinstance(callback.message, Message):
             await callback.message.delete()
     except Exception:
-        pass
+        pass  # nosec B110

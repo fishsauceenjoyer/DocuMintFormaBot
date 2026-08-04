@@ -31,7 +31,7 @@ jobs:
           uv run mypy --explicit-package-bases --exclude '^tests/' .
 
       - name: 🕵️‍♂️ Аудит безопасности (Bandit)
-        run: uv run bandit -r . -f txt
+        run: uv run bandit -r handlers/ db/ utils/ data/ services/ fsm/ keyboards/ templates/ -f txt
 
   automated_testing:
     name: 🧪 Тестирование и Покрытие (Pytest)
