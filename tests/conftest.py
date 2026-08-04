@@ -282,6 +282,32 @@ def clean_user_sessions():
     user_sessions.clear()
 
 
+# ── Order-handler database fixture ───────────────────────────────────────
+
+
+@pytest.fixture
+def mock_order_db(monkeypatch):
+    """Patch ``handlers.order.SessionLocal`` to use an in-memory SQLite DB.
+
+    Creates all tables from ``db.models.Base.metadata`` so handlers that
+    touch the database (e.g. ``_generate_order_id``, ``process_payment_proof``)
+    run against a clean in-memory schema instead of the real ``bot.db``.
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from db.models import Base
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    TestSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    import handlers.order as order_module
+
+    monkeypatch.setattr(order_module, "SessionLocal", TestSession)
+    return TestSession
+
+
 # ── Integration-test database fixture ────────────────────────────────────
 
 

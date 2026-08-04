@@ -13,10 +13,10 @@ jobs:
 
     steps:
       - name: 📁 Клонирование репозитория
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: ⚡ Установка uv и Python
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
           enable-cache: true # Включаем кэширование для молниеносной сборки
@@ -40,10 +40,10 @@ jobs:
 
     steps:
       - name: 📁 Клонирование репозитория
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: ⚡ Установка uv и Python
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
           enable-cache: true
