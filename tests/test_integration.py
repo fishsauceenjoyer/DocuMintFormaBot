@@ -14,6 +14,7 @@ import json
 
 import pytest
 from conftest import MockBot, MockCallback, MockFSMContext, MockMessage
+from sqlalchemy import select
 
 from fsm.states import OrderState
 from tests.fixtures.mocks import MockMessage as DuckMockMessage
@@ -106,9 +107,9 @@ async def test_integration_full_order_flow(
     # ── A1: Database — orders table ─────────────────────────────────
     from db.models import Order, OrderItem
 
-    db = test_db()
-    try:
-        orders = db.query(Order).all()
+    async with test_db() as db:
+        result = await db.execute(select(Order))
+        orders = list(result.scalars().all())
         assert len(orders) == 1, f"Expected 1 order in DB, got {len(orders)}"
 
         order = orders[0]
@@ -123,7 +124,10 @@ async def test_integration_full_order_flow(
         assert order.delivery_phone is None
 
         # ── A2: Database — order_items table ────────────────────────
-        items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+        result_items = await db.execute(
+            select(OrderItem).where(OrderItem.order_id == order.id)
+        )
+        items = list(result_items.scalars().all())
         assert len(items) == 1, f"Expected 1 order item, got {len(items)}"
 
         item = items[0]
@@ -147,8 +151,6 @@ async def test_integration_full_order_flow(
         assert docs[0]["type"] == "criminal_record_check"
 
         order_id = order.order_id
-    finally:
-        db.close()
 
     # ── A3: Manager notification (via MockBot) ──────────────────────
     # send_order_to_manager sends a photo (with caption) for the order,

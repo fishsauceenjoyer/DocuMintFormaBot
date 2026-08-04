@@ -7,19 +7,20 @@ completed orders are saved through db.crud.
 """
 
 import asyncio
-import datetime
 import logging
 import secrets
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from sqlalchemy import select
 
 from config import DELIVERY_PRICE_EUR, DELIVERY_PRICE_PLN
 
 # Import DB functions (lazy — imported inside handlers to avoid circular imports)
-from db.crud import SessionLocal, create_order, create_order_item
+from db.crud import AsyncSessionLocal, create_order, create_order_item
 from db.models import Order
 from fsm.states import OrderState
 from keyboards.buttons import delivery_keyboard, quantity_keyboard
@@ -59,19 +60,16 @@ async def _generate_order_id() -> str:
 
     Format: ORDER_YYYYMMDD_XXXX (date + 4 random hex chars).
     """
-    today = datetime.datetime.utcnow().strftime("%Y%m%d")
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
     max_attempts = 5
     for _ in range(max_attempts):
         suffix = secrets.token_hex(2).upper()
         order_id = f"ORDER_{today}_{suffix}"
 
-        db = SessionLocal()
-        try:
-            existing = db.query(Order).filter(Order.order_id == order_id).first()
-            if not existing:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(Order).where(Order.order_id == order_id))
+            if result.scalar_one_or_none() is None:
                 return order_id
-        finally:
-            db.close()
 
     suffix = secrets.token_hex(4).upper()
     return f"ORDER_{today}_{suffix}"
@@ -725,9 +723,8 @@ async def process_payment_proof(message: Message, state: FSMContext):
         )
 
     # Save order to database
-    db = SessionLocal()
-    try:
-        db_order = create_order(
+    async with AsyncSessionLocal() as db:
+        db_order = await create_order(
             db=db,
             order_id=order_id,
             user_id=user_id,
@@ -743,7 +740,7 @@ async def process_payment_proof(message: Message, state: FSMContext):
             price = _currency_price(
                 session.get("currency", DEFAULT_CURRENCY), cart_item["type"]
             )
-            create_order_item(
+            await create_order_item(
                 db=db,
                 order_id=db_order.id,
                 document_type=cart_item["type"],
@@ -751,8 +748,6 @@ async def process_payment_proof(message: Message, state: FSMContext):
                 unit_price=price,
                 data=cart_item,
             )
-    finally:
-        db.close()
 
     await message.answer(
         i18n.get("order_accepted", language=lang, order_id=order_id),

@@ -6,9 +6,15 @@ directly. This keeps business logic testable and decoupled from ORM details.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Optional
 
-from db.crud import SessionLocal, create_order, create_order_item, get_order_by_id
+from db.crud import (
+    AsyncSessionLocal,
+    create_order,
+    create_order_item,
+    get_order_by_id,
+)
 from db.models import Order
 
 
@@ -24,9 +30,8 @@ class OrderManager:
         Returns:
             Created Order ORM instance.
         """
-        db = SessionLocal()
-        try:
-            order = create_order(
+        async with AsyncSessionLocal() as db:
+            order = await create_order(
                 db=db,
                 order_id=order_data["order_id"],
                 user_id=order_data["user_id"],
@@ -39,7 +44,7 @@ class OrderManager:
             )
 
             for item in order_data.get("items", []):
-                create_order_item(
+                await create_order_item(
                     db=db,
                     order_id=order.id,
                     document_type=item["type"],
@@ -48,11 +53,9 @@ class OrderManager:
                     data=item.get("data"),
                 )
 
-            db.commit()
-            db.refresh(order)
+            await db.commit()
+            await db.refresh(order)
             return order
-        finally:
-            db.close()
 
     async def update_status(self, order_number: str, status: str) -> Optional[Order]:
         """Update order status by order_id string.
@@ -64,20 +67,15 @@ class OrderManager:
         Returns:
             Updated Order or None if not found.
         """
-        db = SessionLocal()
-        try:
-            order = get_order_by_id(db, order_number)
+        async with AsyncSessionLocal() as db:
+            order = await get_order_by_id(db, order_number)
             if not order:
                 return None
             order.status = status
-            from datetime import datetime
-
-            order.updated_at = datetime.utcnow()
-            db.commit()
-            db.refresh(order)
+            order.updated_at = datetime.now(timezone.utc)
+            await db.commit()
+            await db.refresh(order)
             return order
-        finally:
-            db.close()
 
     async def get_order(self, order_number: str) -> Optional[Order]:
         """Fetch order by external order_id.
@@ -88,8 +86,5 @@ class OrderManager:
         Returns:
             Order instance or None.
         """
-        db = SessionLocal()
-        try:
-            return get_order_by_id(db, order_number)
-        finally:
-            db.close()
+        async with AsyncSessionLocal() as db:
+            return await get_order_by_id(db, order_number)

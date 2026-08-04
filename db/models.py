@@ -8,11 +8,16 @@ Contains table and relationship definitions:
 """
 
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+def utcnow() -> datetime:
+    """Return the current UTC time as an aware datetime (Python 3.12 safe)."""
+    return datetime.now(timezone.utc)
 
 
 class Base(DeclarativeBase):
@@ -72,9 +77,11 @@ class User(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="user")
     language: Mapped[str] = mapped_column(String(10), default="en")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
 
     def __repr__(self):
@@ -108,7 +115,9 @@ class DocumentType(Base):
     description_ru: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     target_chat_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     def __repr__(self):
         return f"<DocumentType(code={self.code}, name={self.name_uk})>"
@@ -146,9 +155,11 @@ class Order(Base):
     )
     tracking_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     documents_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
 
     def __repr__(self):

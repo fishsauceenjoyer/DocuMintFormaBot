@@ -6,20 +6,20 @@ from services import order_builder, order_manager, pricing
 
 
 @pytest.fixture
-def clean_order_manager_db(monkeypatch):
-    """Patch SessionLocal in order_manager to use a clean in-memory DB."""
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
+async def clean_order_manager_db(monkeypatch):
+    """Patch AsyncSessionLocal in order_manager to use a clean in-memory DB."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from db.models import Base
 
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    TestSession = sessionmaker(bind=engine)
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    TestSession = async_sessionmaker(engine, expire_on_commit=False)
 
     import services.order_manager as om
 
-    monkeypatch.setattr(om, "SessionLocal", TestSession)
+    monkeypatch.setattr(om, "AsyncSessionLocal", TestSession)
     return TestSession
 
 

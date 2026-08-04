@@ -14,18 +14,20 @@ import json
 
 import pytest
 
+from sqlalchemy import func, select
+
 from tests.fixtures.db_fixtures import mock_db_session  # noqa: F401
 
 
 class TestSQLInjection:
     """Verify SQL-injection payloads are stored unchanged and never executed."""
 
-    def test_sql_injection_stored_as_is(self, mock_db_session):  # noqa: F811
+    async def test_sql_injection_stored_as_is(self, mock_db_session):  # noqa: F811
         """A DROP TABLE attempt must be saved as plain text, not executed."""
         from db.crud import create_order, create_order_item, get_order_by_id
         from db.models import Order
 
-        order = create_order(
+        order = await create_order(
             db=mock_db_session,
             order_id="ORDER_SEC_SQL",
             user_id=1,
@@ -34,7 +36,7 @@ class TestSQLInjection:
         )
 
         payload = "'; DROP TABLE orders; --"
-        item = create_order_item(
+        item = await create_order_item(
             db=mock_db_session,
             order_id=order.id,
             document_type="visa",
@@ -49,17 +51,18 @@ class TestSQLInjection:
         assert stored["full_name"] == payload
 
         # The orders table still exists and the order is intact
-        assert mock_db_session.query(Order).count() == 1
-        assert get_order_by_id(mock_db_session, "ORDER_SEC_SQL") is not None
+        result = await mock_db_session.execute(select(func.count()).select_from(Order))
+        assert result.scalar_one() == 1
+        assert await get_order_by_id(mock_db_session, "ORDER_SEC_SQL") is not None
 
-    def test_sql_injection_in_delivery_email_stored_as_is(
+    async def test_sql_injection_in_delivery_email_stored_as_is(
         self, mock_db_session
     ):  # noqa: F811
         """A crafted email field with SQL syntax is stored without execution."""
         from db.crud import create_order, get_order_by_id
 
         payload = "x@x.com'); DROP TABLE users; --"
-        create_order(
+        await create_order(
             db=mock_db_session,
             order_id="ORDER_SEC_EMAIL",
             user_id=2,
@@ -68,7 +71,7 @@ class TestSQLInjection:
             delivery={"name": "Test", "phone": "+48123456789", "email": payload},
         )
 
-        order = get_order_by_id(mock_db_session, "ORDER_SEC_EMAIL")
+        order = await get_order_by_id(mock_db_session, "ORDER_SEC_EMAIL")
         assert order is not None
         assert order.delivery_email == payload
 

@@ -46,13 +46,17 @@ def get_current_branch() -> str:
 def list_micro_branches() -> List[str]:
     """Найти все локальные ветки с префиксом ``micro/``."""
     result = run_git(["branch", "--list", f"{MICRO_PREFIX}*"])
-    branches = [line.strip().lstrip("* ").strip() for line in result.stdout.splitlines()]
+    branches = [
+        line.strip().lstrip("* ").strip() for line in result.stdout.splitlines()
+    ]
     return [b for b in branches if b]
 
 
 def branch_exists(branch: str) -> bool:
     """Проверить, существует ли ветка локально."""
-    result = run_git(["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], check=False)
+    result = run_git(
+        ["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], check=False
+    )
     return result.returncode == 0
 
 

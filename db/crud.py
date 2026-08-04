@@ -1,79 +1,110 @@
 """Database access layer.
 
-The module owns the SQLAlchemy engine/session factory and exposes small CRUD
-helpers for users, document types, orders, order items, and admin statistics.
-DATABASE_URL comes from config.py, so local SQLite and hosted Postgres use the
-same application code.
+The module owns the SQLAlchemy async engine/session factory and exposes small
+CRUD helpers for users, document types, orders, order items, and admin
+statistics. DATABASE_URL comes from config.py, so local SQLite and hosted
+Postgres use the same application code.
+
+The engine is asynchronous (``create_async_engine``) with a connection pool
+configured for production load (``pool_size=10``, ``max_overflow=20``) so the
+bot does not drop connections under heavy traffic.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, cast
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from config import DATABASE_URL
 from db.models import Base, DocumentType, Order, OrderItem, User
 
-# SQLAlchemy engine — works with both SQLite (local dev) and PostgreSQL (production).
-# Connection pooling is handled by SQLAlchemy's default pool for each dialect.
-# For SQLite with concurrent access, pool_size and max_overflow are ignored
-# (SQLite only allows one writer at a time, which is fine for single-bot usage).
-engine = create_engine(DATABASE_URL)
 
-# Session factory (tables are created in init_db() / init_default_document_types())
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+def _async_url(url: str) -> str:
+    """Convert a sync SQLAlchemy URL to its async driver equivalent.
 
-
-def get_db():
+    - ``postgresql://`` → ``postgresql+asyncpg://``
+    - ``sqlite:///`` → ``sqlite+aiosqlite:///``
+    - ``postgresql+psycopg2://`` → ``postgresql+asyncpg://``
     """
-    Генератор для получения сессии базы данных.
+    if url.startswith("postgresql+psycopg2://"):
+        return url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("sqlite://"):
+        return url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+    return url
 
-    Используется в качестве зависимости для получения объекта Session.
+
+# SQLAlchemy async engine — works with both SQLite (local dev) and PostgreSQL
+# (production). Connection pooling is configured explicitly so the bot does not
+# drop connections under load. For SQLite, pool_size/max_overflow are ignored
+# (SQLite only allows one writer at a time, which is fine for single-bot usage).
+async_engine = create_async_engine(
+    _async_url(DATABASE_URL),
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+)
+
+# Async session factory (tables are created in init_db() / init_default_document_types())
+AsyncSessionLocal = async_sessionmaker(
+    async_engine, class_=AsyncSession, expire_on_commit=False
+)
+
+
+async def get_db():
+    """
+    Асинхронный генератор для получения сессии базы данных.
+
+    Используется в качестве зависимости для получения объекта AsyncSession.
     Автоматически закрывает сессию после использования.
 
     Yields:
-        Session: Сессия SQLAlchemy для работы с БД.
+        AsyncSession: Асинхронная сессия SQLAlchemy для работы с БД.
     """
-    db = SessionLocal()
-    try:
+    async with AsyncSessionLocal() as db:
         yield db
-    finally:
-        db.close()
 
 
 # User operations
-def get_user_by_username(db: Session, username: str) -> Optional[User]:
+async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
     """
     Находит пользователя по его username в Telegram.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         username: Username пользователя Telegram.
 
     Returns:
         Объект User или None, если пользователь не найден.
     """
-    return db.query(User).filter(User.username == username).first()
+    result = await db.execute(select(User).where(User.username == username))
+    return result.scalar_one_or_none()
 
 
-def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
+async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
     """
     Находит пользователя по его ID в локальной БД.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         user_id: ID пользователя в локальной БД (не Telegram).
 
     Returns:
         Объект User или None, если пользователь не найден.
     """
-    return db.query(User).filter(User.id == user_id).first()
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
 
 
-def create_user(
-    db: Session, username: str, chat_id: Optional[int] = None, role: str = "user"
+async def create_user(
+    db: AsyncSession, username: str, chat_id: Optional[int] = None, role: str = "user"
 ) -> User:
     """
     Создаёт нового пользователя.
@@ -82,7 +113,7 @@ def create_user(
     целостности данных (нужна проверка перед вызовом).
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         username: Username пользователя Telegram.
         chat_id: ID чата Telegram (опционально).
         role: Роль пользователя (user/manager/admin).
@@ -92,12 +123,12 @@ def create_user(
     """
     user = User(username=username, chat_id=chat_id, role=role)
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
-def update_user_chat_id(db: Session, user: User, chat_id: int):
+async def update_user_chat_id(db: AsyncSession, user: User, chat_id: int):
     """
     Обновляет chat_id пользователя.
 
@@ -105,62 +136,66 @@ def update_user_chat_id(db: Session, user: User, chat_id: int):
     чтобы бот мог отправлять пользователю уведомления.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         user: Объект пользователя для обновления.
         chat_id: Новый ID чата Telegram.
     """
     user.chat_id = chat_id
-    user.updated_at = datetime.utcnow()
-    db.commit()
+    user.updated_at = datetime.now(timezone.utc)
+    await db.commit()
 
 
-def update_user_language(db: Session, user: User, language: str):
+async def update_user_language(db: AsyncSession, user: User, language: str):
     """
     Обновляет выбранный язык интерфейса пользователя.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         user: Объект пользователя для обновления.
         language: Код языка ('uk' или 'ru').
     """
     user.language = language
-    user.updated_at = datetime.utcnow()
-    db.commit()
+    user.updated_at = datetime.now(timezone.utc)
+    await db.commit()
 
 
 # Document type operations
-def get_document_type(db: Session, code: str) -> Optional[DocumentType]:
+async def get_document_type(db: AsyncSession, code: str) -> Optional[DocumentType]:
     """
     Находит тип документа по его коду.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         code: Код типа документа (sanepid, bhp, psychotests, pesel).
 
     Returns:
         Объект DocumentType или None, если не найден.
     """
-    return db.query(DocumentType).filter(DocumentType.code == code).first()
+    result = await db.execute(select(DocumentType).where(DocumentType.code == code))
+    return result.scalar_one_or_none()
 
 
-def get_all_document_types(db: Session) -> List[DocumentType]:
+async def get_all_document_types(db: AsyncSession) -> List[DocumentType]:
     """
     Возвращает все активные типы документов.
 
     Фильтрует только те типы, у которых is_active = True.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
 
     Returns:
         Список активных объектов DocumentType.
     """
-    return db.query(DocumentType).filter(DocumentType.is_active.is_(True)).all()
+    result = await db.execute(
+        select(DocumentType).where(DocumentType.is_active.is_(True))
+    )
+    return list(result.scalars().all())
 
 
 # Order operations
-def create_order(
-    db: Session,
+async def create_order(
+    db: AsyncSession,
     order_id: str,
     user_id: int,
     total_price: int,
@@ -177,7 +212,7 @@ def create_order(
     доказательство оплаты, данные доставки и JSON с содержимым.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         order_id: Уникальный номер заказа (ORDER_XXXXXXXX).
         user_id: ID пользователя в локальной БД.
         total_price: Итоговая сумма заказа в злотых.
@@ -204,142 +239,165 @@ def create_order(
         documents_json=json.dumps(documents, ensure_ascii=False) if documents else None,
     )
     db.add(order)
-    db.commit()
-    db.refresh(order)
+    await db.commit()
+    await db.refresh(order)
     return order
 
 
-def get_order_by_id(db: Session, order_id: str) -> Optional[Order]:
+async def get_order_by_id(db: AsyncSession, order_id: str) -> Optional[Order]:
     """
     Находит заказ по его номеру.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         order_id: Номер заказа (ORDER_XXXXXXXX).
 
     Returns:
         Объект Order или None, если не найден.
     """
-    return db.query(Order).filter(Order.order_id == order_id).first()
+    result = await db.execute(select(Order).where(Order.order_id == order_id))
+    return result.scalar_one_or_none()
 
 
-def get_orders_by_user(db: Session, user_id: int) -> List[Order]:
+async def get_orders_by_user(db: AsyncSession, user_id: int) -> List[Order]:
     """
     Возвращает все заказы пользователя, отсортированные по дате (сначала новые).
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         user_id: ID пользователя в локальной БД.
 
     Returns:
         Список заказов пользователя.
     """
-    return (
-        db.query(Order)
-        .filter(Order.user_id == user_id)
-        .order_by(Order.created_at.desc())
-        .all()
+    result = await db.execute(
+        select(Order).where(Order.user_id == user_id).order_by(Order.created_at.desc())
     )
+    return list(result.scalars().all())
 
 
-def update_order_status(db: Session, order: Order, status: str):
+async def update_order_status(db: AsyncSession, order: Order, status: str):
     """
     Обновляет статус заказа.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         order: Объект заказа для обновления.
         status: Новый статус (см. OrderStatus enum).
     """
     order.status = status
-    order.updated_at = datetime.utcnow()
-    db.commit()
+    order.updated_at = datetime.now(timezone.utc)
+    await db.commit()
 
 
-def update_order_tracking(db: Session, order: Order, tracking_number: str):
+async def update_order_tracking(db: AsyncSession, order: Order, tracking_number: str):
     """
     Добавляет трек-номер к заказу и меняет статус на "shipped".
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         order: Объект заказа для обновления.
         tracking_number: Трек-номер почтовой службы.
     """
     order.tracking_number = tracking_number
     order.status = "shipped"
-    order.updated_at = datetime.utcnow()
-    db.commit()
+    order.updated_at = datetime.now(timezone.utc)
+    await db.commit()
 
 
-def update_order_payment_proof(db: Session, order: Order, file_id: str):
+async def update_order_payment_proof(db: AsyncSession, order: Order, file_id: str):
     """
     Сохраняет file_id подтверждения оплаты и меняет статус на "paid".
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         order: Объект заказа для обновления.
         file_id: File_id фото/документа с чеком оплаты.
     """
     order.payment_proof_file_id = file_id
     order.status = "paid"
-    order.updated_at = datetime.utcnow()
-    db.commit()
+    order.updated_at = datetime.now(timezone.utc)
+    await db.commit()
 
 
-def get_all_orders(db: Session) -> List[Order]:
+async def get_all_orders(db: AsyncSession) -> List[Order]:
     """
     Возвращает все заказы из базы данных, отсортированные по дате (сначала новые).
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
 
     Returns:
         Список всех заказов.
     """
-    return db.query(Order).order_by(Order.created_at.desc()).all()
+    result = await db.execute(select(Order).order_by(Order.created_at.desc()))
+    return list(result.scalars().all())
 
 
-def get_orders_by_status(db: Session, status: str) -> List[Order]:
+async def get_orders_by_status(db: AsyncSession, status: str) -> List[Order]:
     """
     Возвращает заказы с указанным статусом.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         status: Статус для фильтрации (см. OrderStatus enum).
 
     Returns:
         Список заказов с указанным статусом.
     """
-    return (
-        db.query(Order)
-        .filter(Order.status == status)
-        .order_by(Order.created_at.desc())
-        .all()
+    result = await db.execute(
+        select(Order).where(Order.status == status).order_by(Order.created_at.desc())
     )
+    return list(result.scalars().all())
 
 
-def get_order_stats(db: Session) -> dict:
+async def get_order_stats(db: AsyncSession) -> dict:
     """
     Возвращает статистику по заказам.
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
 
     Returns:
         Словарь с ключами total, pending, paid, processing,
         ready, shipped, completed, cancelled.
     """
-    total = db.query(Order).count()
-    pending = db.query(Order).filter(Order.status == "pending").count()
-    paid = db.query(Order).filter(Order.status == "paid").count()
-    processing = db.query(Order).filter(Order.status == "processing").count()
-    ready = db.query(Order).filter(Order.status == "ready").count()
-    shipped = db.query(Order).filter(Order.status == "shipped").count()
-    completed = db.query(Order).filter(Order.status == "completed").count()
-    cancelled = db.query(Order).filter(Order.status == "cancelled").count()
+    total = (await db.execute(select(Order))).scalars().all()
+    total_count = len(total)
+    pending = len(
+        (await db.execute(select(Order).where(Order.status == "pending")))
+        .scalars()
+        .all()
+    )
+    paid = len(
+        (await db.execute(select(Order).where(Order.status == "paid"))).scalars().all()
+    )
+    processing = len(
+        (await db.execute(select(Order).where(Order.status == "processing")))
+        .scalars()
+        .all()
+    )
+    ready = len(
+        (await db.execute(select(Order).where(Order.status == "ready"))).scalars().all()
+    )
+    shipped = len(
+        (await db.execute(select(Order).where(Order.status == "shipped")))
+        .scalars()
+        .all()
+    )
+    completed = len(
+        (await db.execute(select(Order).where(Order.status == "completed")))
+        .scalars()
+        .all()
+    )
+    cancelled = len(
+        (await db.execute(select(Order).where(Order.status == "cancelled")))
+        .scalars()
+        .all()
+    )
 
     return {
-        "total": total,
+        "total": total_count,
         "pending": pending,
         "paid": paid,
         "processing": processing,
@@ -351,8 +409,8 @@ def get_order_stats(db: Session) -> dict:
 
 
 # Order item operations
-def create_order_item(
-    db: Session,
+async def create_order_item(
+    db: AsyncSession,
     order_id: int,
     document_type: str,
     quantity: int,
@@ -363,7 +421,7 @@ def create_order_item(
     Создаёт позицию заказа (отдельный тип документа с количеством).
 
     Args:
-        db: Сессия базы данных.
+        db: Асинхронная сессия базы данных.
         order_id: ID заказа в локальной БД.
         document_type: Код типа документа.
         quantity: Количество экземпляров.
@@ -381,13 +439,13 @@ def create_order_item(
         data_json=json.dumps(data, ensure_ascii=False) if data else None,
     )
     db.add(item)
-    db.commit()
-    db.refresh(item)
+    await db.commit()
+    await db.refresh(item)
     return item
 
 
 # Helper to initialize default document types
-def init_default_document_types(db: Session):
+async def init_default_document_types(db: AsyncSession):
     """
     Инициализирует типы документов по умолчанию, если они ещё не созданы.
 
@@ -395,7 +453,7 @@ def init_default_document_types(db: Session):
     с базовыми ценами и настройками маршрутизации.
 
     Args:
-        db: Сессия базы данных для добавления записей.
+        db: Асинхронная сессия базы данных для добавления записей.
     """
     from data.business_config import DOCUMENT_TEMPLATES, ROUTING_KEYS
 
@@ -411,26 +469,29 @@ def init_default_document_types(db: Session):
     ]
 
     for doc_type in default_types:
-        existing = get_document_type(db, cast(str, doc_type["code"]))
+        existing = await get_document_type(db, cast(str, doc_type["code"]))
         if not existing:
             new_type = DocumentType(**doc_type)
             db.add(new_type)
 
-    db.commit()
+    await db.commit()
 
 
-def init_db():
+async def init_db():
     """
     Полная инициализация базы данных: создание таблиц и наполнение данными.
 
     Выполняется при первом запуске для создания структуры БД
     и добавления стандартных типов документов.
     """
-    Base.metadata.create_all(engine)
-    with SessionLocal() as db:
-        init_default_document_types(db)
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    async with AsyncSessionLocal() as db:
+        await init_default_document_types(db)
 
 
 if __name__ == "__main__":
-    init_db()
+    import asyncio
+
+    asyncio.run(init_db())
     print("Database initialized successfully!")

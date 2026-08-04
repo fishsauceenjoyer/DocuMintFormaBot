@@ -14,7 +14,7 @@ from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
 
-from db.crud import SessionLocal, create_user, get_user_by_username
+from db.crud import AsyncSessionLocal, create_user, get_user_by_username
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +45,10 @@ class RegistrationMiddleware(BaseMiddleware):
             user = event.from_user
 
         if user is not None and user.username:
-            db = SessionLocal()
-            try:
-                existing = get_user_by_username(db, user.username)
+            async with AsyncSessionLocal() as db:
+                existing = await get_user_by_username(db, user.username)
                 if existing is None:
-                    create_user(
+                    await create_user(
                         db=db,
                         username=user.username,
                         chat_id=user.id,
@@ -61,9 +60,7 @@ class RegistrationMiddleware(BaseMiddleware):
                 elif existing.chat_id != user.id:
                     # Update chat_id if it changed
                     existing.chat_id = user.id
-                    db.commit()
-            finally:
-                db.close()
+                    await db.commit()
 
         return await handler(event, data)
 

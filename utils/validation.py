@@ -253,9 +253,9 @@ def validate_field_value(
         _ = int(parts[0])
         _ = int(parts[1])
         year = int(parts[2])
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        current_year = datetime.utcnow().year
+        current_year = datetime.now(timezone.utc).year
         if year < 1900 or year > current_year:
             return ValidationResult(
                 is_valid=False,

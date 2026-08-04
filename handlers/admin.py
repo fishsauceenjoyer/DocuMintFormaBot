@@ -356,11 +356,10 @@ async def cmd_orders_list(message: Message, state: FSMContext):
         message: Сообщение с командой /orders.
         state: Контекст FSM (не используется).
     """
-    from db.crud import SessionLocal, get_all_orders
+    from db.crud import AsyncSessionLocal, get_all_orders
 
-    db = SessionLocal()
-    try:
-        all_orders = get_all_orders(db)
+    async with AsyncSessionLocal() as db:
+        all_orders = await get_all_orders(db)
         if not all_orders:
             await message.answer("📋 Заказов пока нет.")
             return
@@ -370,8 +369,6 @@ async def cmd_orders_list(message: Message, state: FSMContext):
             text += f"• {order.order_id} - {order.status} - {order.total_price} zł\n"
 
         await message.answer(text, parse_mode="Markdown")
-    finally:
-        db.close()
 
 
 @router.message(Command("stats"))
@@ -386,11 +383,10 @@ async def cmd_stats(message: Message):
     Args:
         message: Сообщение с командой /stats.
     """
-    from db.crud import SessionLocal, get_order_stats
+    from db.crud import AsyncSessionLocal, get_order_stats
 
-    db = SessionLocal()
-    try:
-        stats = get_order_stats(db)
+    async with AsyncSessionLocal() as db:
+        stats = await get_order_stats(db)
 
         text = (
             "📊 **Статистика заказов:**\n\n"
@@ -405,8 +401,6 @@ async def cmd_stats(message: Message):
         )
 
         await message.answer(text)
-    finally:
-        db.close()
 
 
 @router.message(Command("help_admin"))
