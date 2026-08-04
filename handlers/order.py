@@ -565,10 +565,18 @@ async def save_delivery(message: Message, state: FSMContext):
     from utils.sanitizer import truncate_for_storage
 
     delivery = {
-        "name": truncate_for_storage(lines[0].strip() if len(lines) > 0 else "-"),
-        "phone": truncate_for_storage(lines[1].strip() if len(lines) > 1 else "-"),
-        "email": truncate_for_storage(lines[2].strip() if len(lines) > 2 else "-"),
-        "address": truncate_for_storage(lines[3].strip() if len(lines) > 3 else "-"),
+        "name": truncate_for_storage(
+            lines[0].strip() if len(lines) > 0 else "-", max_length=255
+        ),
+        "phone": truncate_for_storage(
+            lines[1].strip() if len(lines) > 1 else "-", max_length=20
+        ),
+        "email": truncate_for_storage(
+            lines[2].strip() if len(lines) > 2 else "-", max_length=255
+        ),
+        "address": truncate_for_storage(
+            lines[3].strip() if len(lines) > 3 else "-", max_length=100
+        ),
     }
     session["delivery"] = delivery
 
