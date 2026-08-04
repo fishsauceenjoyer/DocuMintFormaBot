@@ -4,8 +4,6 @@ Provides the /start landing, /menu command, new-order navigation,
 and the "Contact manager" button handler.
 """
 
-import asyncio
-
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
