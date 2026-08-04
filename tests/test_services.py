@@ -173,6 +173,6 @@ class TestOrderManager:
         assert updated.status == "paid"
 
     @pytest.mark.asyncio
-    async def test_get_order_missing_returns_none(self):
+    async def test_get_order_missing_returns_none(self, clean_order_manager_db):
         manager = order_manager.OrderManager()
         assert await manager.get_order("ORDER_MISSING") is None

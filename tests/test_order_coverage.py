@@ -48,7 +48,7 @@ class TestProcessPaymentProof:
 
     @pytest.mark.asyncio
     async def test_accepts_photo_as_payment_proof(
-        self, _setup_session, clean_user_sessions
+        self, _setup_session, clean_user_sessions, mock_order_db
     ):
         """Verify a photo is accepted as valid payment proof."""
         from handlers.order import process_payment_proof
@@ -74,7 +74,7 @@ class TestProcessPaymentProof:
 
     @pytest.mark.asyncio
     async def test_accepts_document_as_payment_proof(
-        self, _setup_session, clean_user_sessions
+        self, _setup_session, clean_user_sessions, mock_order_db
     ):
         """Verify a PDF document is accepted as valid payment proof."""
         from handlers.order import process_payment_proof
@@ -155,7 +155,7 @@ class TestProcessPaymentProof:
 
     @pytest.mark.asyncio
     async def test_handles_manager_notification_failure(
-        self, _setup_session, clean_user_sessions
+        self, _setup_session, clean_user_sessions, mock_order_db
     ):
         """Verify graceful handling if send_order_to_manager raises."""
         from handlers.order import process_payment_proof
@@ -184,7 +184,7 @@ class TestProcessPaymentProof:
 
     @pytest.mark.asyncio
     async def test_creates_order_with_all_data(
-        self, _setup_session, clean_user_sessions
+        self, _setup_session, clean_user_sessions, mock_order_db
     ):
         """Verify create_order is called with correct parameters."""
         from handlers.order import process_payment_proof
@@ -538,7 +538,7 @@ class TestGenerateOrderId:
     """Tests for unique order ID generation."""
 
     @pytest.mark.asyncio
-    async def test_generates_id_with_correct_format(self):
+    async def test_generates_id_with_correct_format(self, mock_order_db):
         """Verify order ID follows ORDER_YYYYMMDD_XXXX pattern."""
         from handlers.order import _generate_order_id
 
@@ -551,7 +551,7 @@ class TestGenerateOrderId:
         assert len(parts[2]) == 4, "Random suffix must be 4 chars"
 
     @pytest.mark.asyncio
-    async def test_generates_unique_ids(self):
+    async def test_generates_unique_ids(self, mock_order_db):
         """Verify two generated IDs are different."""
         from handlers.order import _generate_order_id
 

@@ -21,7 +21,7 @@ from tests.fixtures.mocks import (
 
 
 @pytest.mark.asyncio
-async def test_e2e_full_order_flow(clean_user_sessions):
+async def test_e2e_full_order_flow(clean_user_sessions, mock_order_db):
     """Simulate a complete user order from /start to payment proof.
 
     This test validates:
