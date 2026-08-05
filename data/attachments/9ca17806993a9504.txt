@@ -1,0 +1,6 @@
+Configuration errors found:
+  - ADMIN_USERNAME is not set in .env file
+  - ROUTING_VISA is not set in .env file
+  - ROUTING_PASSPORT is not set in .env file
+  - ROUTING_CRIMINAL_RECORD is not set in .env file
+  - ROUTING_APOSTILLE is not set in .env file
