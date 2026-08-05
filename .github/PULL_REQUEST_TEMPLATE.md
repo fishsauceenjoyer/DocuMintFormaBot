@@ -44,7 +44,7 @@ Closes: #ISSUE
 - [ ] `uv run black --check .` passes
 - [ ] `uv run flake8 .` passes
 - [ ] `uv run mypy --explicit-package-bases --exclude '^tests/' .` passes
-- [ ] `uv run bandit` passes
+- [ ] **Аудит безопасности:** Команда `uv run bandit -r handlers/ db/ utils/ data/ services/` не обнаружила уязвимостей.
 - [ ] Docs updated (README, docs/) if behavior changed
 
 ## Notes for Reviewers
