@@ -1,4 +1,4 @@
----
+ ---
 task: meta-orchestration
 target_model: deepseek-v4
 engine: cline
