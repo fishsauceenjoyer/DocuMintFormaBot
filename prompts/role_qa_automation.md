@@ -42,5 +42,6 @@ The codebase has changed (either a new feature was added or a business flow in `
 
 ## 🚀 Terminal Commands to Run
 ```bash
-# Provide the exact uv commands to run and verify tests + coverage
-uv run pytest tests/{{test_file_name}}.py -v --cov=.
+# Run native mutation analysis on Windows without external mutators
+uv run python scripts/run_mutations.py
+```
