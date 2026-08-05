@@ -27,6 +27,12 @@ You need to implement a new feature or modify an existing business process based
 2. **No Technical Debt:** Avoid hardcoding values. Use `data/business_config.py` or `.env` configurations.
 3. **Zero-Broke Deployment:** Ensure your output code fits perfectly into the existing codebase without breaking adjacent features.
 
+⚠️ WINDOWS POWERSHELL COMPATIBILITY RULES:
+- Никогда не используй Linux-команды (tail, grep, head) в execute_command.
+- Никогда не объединяй команды через оператор `&&`. Выполняй строго по одной команде за один tool_call.
+- Для мутационного тестирования на Windows используй исключительно нативный `mutatest` с флагом обхода конфликта версий coverage:
+  `uv run mutatest -s data/business_config.py -t "pytest" --ignore-coverage`
+
 # OUTPUT FORMAT
 ## 💻 Production-Ready Code
 ```python
