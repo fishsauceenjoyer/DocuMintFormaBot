@@ -32,5 +32,16 @@
     "error_no_user_info": "⚠️ Could not get user information.",
     "error_bot_error": "⚠️ Bot error. Please try again.",
     "error_payment_incomplete": "❌ Order error: payment method not selected or total is zero. Please start again: /start",
-    "error_media_only": "📸 Please send a photo or screenshot of the payment receipt. Text messages are not accepted at this step."
+    "error_media_only": "📸 Please send a photo or screenshot of the payment receipt. Text messages are not accepted at this step.",
+    "poster_terminator1_name": "🎬 Terminator 1",
+    "poster_terminator2_name": "🎬 Terminator 2",
+    "poster_predator_name": "🎬 Predator",
+    "field_size_label": "Size",
+    "field_color_label": "Color",
+    "field_quantity_label": "Quantity",
+    "choice_size_A4": "A4",
+    "choice_size_A3": "A3",
+    "choice_size_A2": "A2",
+    "choice_color_color": "Color",
+    "choice_color_bw": "Black & white"
 }

@@ -205,12 +205,13 @@ business. It defines:
 
 ### Switching business configuration
 
-The repository ships with **two** business config files:
+The repository ships with **three** business config files:
 
 | File | Purpose |
 |------|---------|
 | `data/business_config.py` | **Active** — demo "consular services" (visa, passport, etc.) |
 | `data/business_config_original.py` | **Reference** — original data (sanepid, BHP, PESEL, psychotests) — **not imported** |
+| `data/business_config_demo.py` | **Demo** — poster printing services (Терминатор 1/2, Хищник) — **not imported** |
 
 To switch back to the original configuration:
 
@@ -229,6 +230,70 @@ To switch back to the original configuration:
    | `ROUTING_APOSTILLE` | `ROUTING_PESEL` |
 
 3. (Optional) Reset `locales/` strings if the original payment methods are used.
+
+---
+
+## Демо-режим (печать постеров)
+
+Бот поставляется с **демо-конфигом** для печати постеров
+(`data/business_config_demo.py`). Он определяет три услуги:
+
+- 🎬 **Терминатор 1** — базовая цена 10 € / 40 zł
+- 🎬 **Терминатор 2** — базовая цена 15 € / 60 zł
+- 🎬 **Хищник** — базовая цена 20 € / 80 zł
+
+Каждая услуга имеет поля:
+
+| Поле | Тип | Варианты |
+|------|-----|----------|
+| `size` | choice | A4, A3, A2 |
+| `color` | choice | color (цветной), bw (чёрно-белый) |
+| `quantity` | integer | 1–5 |
+
+**Ценообразование:** базовая цена + надбавка за размер + надбавка за цветность.
+
+| Размер | Надбавка (EUR) | Надбавка (PLN) |
+|--------|----------------|----------------|
+| A4 | +0 | +0 |
+| A3 | +5 | +20 |
+| A2 | +10 | +40 |
+
+| Цветность | Надбавка (EUR) | Надбавка (PLN) |
+|-----------|----------------|----------------|
+| bw | +0 | +0 |
+| color | +3 | +12 |
+
+### Как переключиться на демо-режим
+
+1. **Скопируйте** демо-конфиг в активный файл:
+   ```bash
+   cp data/business_config_demo.py data/business_config.py
+   ```
+   (или переименуйте, сохранив резервную копию активного конфига).
+
+2. **Обновите `.env`** — добавьте routing-переменные для постеров:
+   ```env
+   ROUTING_POSTER_TERMINATOR1=-100123456789
+   ROUTING_POSTER_TERMINATOR2=-100123456789
+   ROUTING_POSTER_PREDATOR=-100123456789
+   ROUTING_DEFAULT=-100123456789
+   ```
+
+3. **Локализация** — переводы для постеров уже добавлены в
+   `locales/ru.json`, `locales/en.json`, `locales/uk.json`.
+
+4. **Перезапустите бота**:
+   ```bash
+   uv run python main.py
+   ```
+
+### Обратная совместимость
+
+- `data/business_config_original.py` и `data/business_config.py` **не изменяются** —
+  они остаются доступными для восстановления.
+- Существующие тесты (`tests/test_business_config.py`) продолжают работать,
+  так как активный конфиг не меняется.
+- Новые тесты для демо-конфига: `tests/test_demo_config.py`.
 
 
 ---
