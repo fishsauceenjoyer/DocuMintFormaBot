@@ -749,9 +749,12 @@ async def process_payment_proof(message: Message, state: FSMContext):
                 data=cart_item,
             )
 
+    from keyboards.buttons import main_menu_keyboard
+
     await message.answer(
         i18n.get("order_accepted", language=lang, order_id=order_id),
         parse_mode="Markdown",
+        reply_markup=main_menu_keyboard(),
     )
 
     await state.clear()

@@ -155,7 +155,7 @@ async def send_order_to_manager(
         doc_type = doc["type"]
         template = get_template(doc_type)
         doc_name = (
-            (template.get("name_en") or template.get("name_ru") or doc_type)
+            (template.get("name_ru") or template.get("name_en") or doc_type)
             if template
             else doc_type
         )
@@ -206,15 +206,6 @@ async def send_order_to_manager(
                 reply_markup=manager_keyboard,
             )
 
-        # Send JSON for easy forwarding (only if the first message succeeded)
-        if sent_ok:
-            json_data = json.dumps(order_data, ensure_ascii=False, indent=2)
-            await _safe_send(
-                bot=bot,
-                chat_id=target,
-                text=f"```json\n{json_data}\n```",
-                parse_mode="Markdown",
-            )
     except Exception as e:
         logger.error(
             "Unexpected error sending order %s to %s: %s\n%s",
@@ -247,13 +238,6 @@ async def send_order_to_manager(
                 reply_markup=manager_keyboard,
             )
             if fb_ok:
-                json_data = json.dumps(order_data, ensure_ascii=False, indent=2)
-                await _safe_send(
-                    bot=bot,
-                    chat_id=MANAGER_ID,
-                    text=f"```json\n{json_data}\n```",
-                    parse_mode="Markdown",
-                )
                 fallback_succeeded = True
         except Exception as e:
             logger.error(
@@ -284,13 +268,6 @@ async def send_order_to_manager(
                 reply_markup=manager_keyboard,
             )
             if direct_ok:
-                json_data = json.dumps(order_data, ensure_ascii=False, indent=2)
-                await _safe_send(
-                    bot=bot,
-                    chat_id=user_id,
-                    text=f"```json\n{json_data}\n```",
-                    parse_mode="Markdown",
-                )
                 sent_ok = True
                 target = user_id
         except Exception as e:

@@ -124,10 +124,10 @@ def payment_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="💳 Blik за номером", callback_data="pay_blik")],
-            [InlineKeyboardButton(text="🇺🇦 Оплата гривнею", callback_data="pay_uah")],
+            [InlineKeyboardButton(text="🇺🇦 Оплата гривной", callback_data="pay_uah")],
             [
                 InlineKeyboardButton(
-                    text="₿ Криптовалюта USDt", callback_data="pay_usdt"
+                    text="₿ Криптовалюта USDT", callback_data="pay_usdt"
                 )
             ],
             [

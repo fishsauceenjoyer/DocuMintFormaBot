@@ -153,22 +153,18 @@ async def test_integration_full_order_flow(
         order_id = order.order_id
 
     # ── A3: Manager notification (via MockBot) ──────────────────────
-    # send_order_to_manager sends a photo (with caption) for the order,
-    # then a plain message with the JSON payload.
+    # send_order_to_manager sends a photo (with caption) for the order.
+    # JSON payload is no longer sent — only readable message.
     assert bot._mock_photo_sent is not None, "Manager should receive a photo"
     photo_sent = bot._mock_photo_sent
     assert photo_sent["photo"] == "proof_123.jpg"
     caption = photo_sent["caption"]
     assert "NEW ORDER" in caption
     assert order_id in caption
-    # Document name should appear (from template name_en)
-    assert "Criminal record check" in caption
+    # Document name should appear (from template name_ru since default lang is ru)
+    assert "Справка о несудимости" in caption
     # Filled field value should appear in the order details
     assert "John Doe" in caption
-
-    assert bot._mock_message_sent is not None, "Manager should receive JSON"
-    json_text = bot._mock_message_sent["text"]
-    assert order_id in json_text
 
     # ── A4: User final message ──────────────────────────────────────
     assert msg_proof._answered_text is not None, "User should receive final message"
