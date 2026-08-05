@@ -195,14 +195,21 @@ def validate_field_value(
     field_type: str = "text",
     max_length: Optional[int] = None,
     field_name: str = "",
+    choices: Optional[list] = None,
+    min_value: Optional[int] = None,
+    max_value: Optional[int] = None,
 ) -> ValidationResult:
     """Validate a single field value for type, length and malicious content.
 
     Args:
         value: Raw user input string.
-        field_type: Expected type ("text", "date", "email", "phone", "optional_text").
+        field_type: Expected type ("text", "date", "email", "phone", "optional_text",
+            "choice", "integer").
         max_length: Maximum allowed string length. If *None*, uses defaults per type.
         field_name: Human-readable field name for error messages.
+        choices: For ``field_type="choice"`` — list of allowed values.
+        min_value: For ``field_type="integer"`` — minimum allowed value.
+        max_value: For ``field_type="integer"`` — maximum allowed value.
 
     Returns:
         A :class:`ValidationResult` with the outcome.
@@ -318,6 +325,48 @@ def validate_field_value(
                 sanitized_value=code,
             )
         cleaned = code
+
+    elif field_type == "choice":
+        if not choices:
+            return ValidationResult(
+                is_valid=False,
+                error_message="❌ Для этого поля не заданы допустимые варианты.",
+                sanitized_value=cleaned,
+            )
+        # Case-insensitive match; store the canonical value from choices.
+        lowered = {str(c).lower(): str(c) for c in choices}
+        match = lowered.get(cleaned.lower())
+        if match is None:
+            allowed = ", ".join(str(c) for c in choices)
+            return ValidationResult(
+                is_valid=False,
+                error_message=f"❌ Недопустимое значение. Выберите одно из: {allowed}",
+                sanitized_value=cleaned,
+            )
+        cleaned = match
+
+    elif field_type == "integer":
+        try:
+            int_value = int(cleaned)
+        except ValueError:
+            return ValidationResult(
+                is_valid=False,
+                error_message="❌ Введите целое число.",
+                sanitized_value=cleaned,
+            )
+        if min_value is not None and int_value < min_value:
+            return ValidationResult(
+                is_valid=False,
+                error_message=f"❌ Минимальное значение: {min_value}.",
+                sanitized_value=cleaned,
+            )
+        if max_value is not None and int_value > max_value:
+            return ValidationResult(
+                is_valid=False,
+                error_message=f"❌ Максимальное значение: {max_value}.",
+                sanitized_value=cleaned,
+            )
+        cleaned = str(int_value)
 
     # Check for malicious patterns (only for text fields where injection is possible)
     if field_type in ("text", "optional_text"):

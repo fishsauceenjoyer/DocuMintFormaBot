@@ -23,7 +23,7 @@ from config import DELIVERY_PRICE_EUR, DELIVERY_PRICE_PLN
 from db.crud import AsyncSessionLocal, create_order, create_order_item
 from db.models import Order
 from fsm.states import OrderState
-from keyboards.buttons import delivery_keyboard, quantity_keyboard
+from keyboards.buttons import choice_keyboard, delivery_keyboard, quantity_keyboard
 from templates.documents import get_template
 from utils.i18n import get_i18n, user_language
 
@@ -336,7 +336,7 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
     field_indicator = f"📝 Поле {current_index + 1} из {len(fields)}"
     progress_bar = "█" * (current_index + 1) + "░" * (len(fields) - current_index - 1)
 
-    await message.answer(
+    text = (
         f"{progress_str}\n"
         f"{summary_text}\n"
         f"\n"
@@ -345,6 +345,15 @@ async def ask_document_fields(message: Message, user_id: int, state: FSMContext)
         f"💡 *Подсказка:* {type_hint}\n\n"
         "Отправьте ответ одним сообщением."
     )
+
+    # For "choice" fields, show an inline keyboard with the allowed options.
+    if field.type == "choice" and field.choices:
+        await message.answer(
+            text,
+            reply_markup=choice_keyboard(field.choices, field.id),
+        )
+    else:
+        await message.answer(text)
 
     await state.update_data(current_field_index=current_index)
     session["current_field_index"] = current_index
@@ -449,6 +458,9 @@ async def process_document_field(message: Message, state: FSMContext):
         field_type=field.type,
         max_length=field.max_length,
         field_name=field.id,
+        choices=field.choices,
+        min_value=field.min_value,
+        max_value=field.max_value,
     )
 
     if not result.is_valid:
@@ -476,6 +488,97 @@ async def process_document_field(message: Message, state: FSMContext):
     await state.update_data(current_step=f"Filling document: field {field_index + 1}")
     session["current_field_index"] = field_index + 1
     await ask_document_fields(message, user_id, state)
+
+
+@router.callback_query(OrderState.filling_document, F.data.startswith("choice_"))
+async def process_choice_field(callback: CallbackQuery, state: FSMContext):
+    """Handle inline choice selection for a "choice" field.
+
+    Callback data format: ``choice_{field_id}_{value}``. The field_id may
+    contain underscores, so we split with maxsplit=2.
+    """
+    if not callback.data or not callback.from_user:
+        await callback.answer("❌ Error processing request")
+        return
+
+    parts = callback.data.split("_", 2)
+    if len(parts) < 3:
+        await callback.answer("❌ Error processing request")
+        return
+    field_id = parts[1]
+    raw_value = parts[2]
+
+    user_id = callback.from_user.id
+    session = await get_user_session(user_id)
+
+    data = await state.get_data()
+    field_index = data.get("current_field_index", 0)
+
+    template = session.get("current_template")
+    if not template:
+        await callback.answer("❌ Error. Please start again: /start")
+        await state.clear()
+        return
+
+    fields = template["fields"]
+    if field_index >= len(fields):
+        await callback.answer("❌ Error processing request")
+        return
+
+    field = fields[field_index]
+    if not field or field.id != field_id or field.type != "choice":
+        await callback.answer("❌ Error processing request")
+        return
+
+    # Validate the selected value against the field's allowed choices.
+    from utils.validation import validate_field_value
+
+    result = validate_field_value(
+        value=raw_value,
+        field_type="choice",
+        field_name=field.id,
+        choices=field.choices,
+    )
+
+    if not result.is_valid:
+        await callback.answer(result.error_message, show_alert=True)
+        return
+
+    # Store the validated value and advance to the next field.
+    session["temp_item_data"][field.id] = result.sanitized_value
+
+    await state.update_data(current_step=f"Filling document: field {field_index + 1}")
+    session["current_field_index"] = field_index + 1
+
+    if isinstance(callback.message, Message):
+        await ask_document_fields(callback.message, user_id, state)
+    elif callback.bot:
+        # Fallback: send a fresh message if the original is not editable.
+        # ask_document_fields needs a Message; we send the next prompt directly.
+        from aiogram.types import InlineKeyboardMarkup
+
+        session = await get_user_session(user_id)
+        template = session.get("current_template")
+        if template:
+            fields = template["fields"]
+            next_index = session.get("current_field_index", 0)
+            if next_index < len(fields):
+                next_field = fields[next_index]
+                text = (
+                    f"📝 *Поле {next_index + 1} из {len(fields)}*\n\n"
+                    f"{next_field.prompt}\n\n"
+                    f"💡 *Подсказка:* {next_field.type_hint()}"
+                )
+                markup = None
+                if next_field.type == "choice" and next_field.choices:
+                    markup = choice_keyboard(next_field.choices, next_field.id)
+                await callback.bot.send_message(
+                    callback.from_user.id,
+                    text,
+                    reply_markup=markup,
+                )
+
+    await callback.answer()
 
 
 @router.message(OrderState.asking_delivery)

@@ -72,6 +72,46 @@ def quantity_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
+def choice_keyboard(
+    choices: Sequence[str],
+    field_id: str,
+) -> InlineKeyboardMarkup:
+    """
+    Клавиатура для выбора значения из списка (поле типа "choice").
+
+    Создаёт по одной кнопке на каждый вариант. Callback data имеет формат
+    ``choice_{field_id}_{value}``.
+
+    Args:
+        choices: Список допустимых значений.
+        field_id: Идентификатор поля (для формирования callback_data).
+
+    Returns:
+        InlineKeyboardMarkup с кнопками выбора варианта.
+    """
+    buttons = []
+    for value in choices:
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=str(value),
+                    callback_data=f"choice_{field_id}_{value}",
+                )
+            ]
+        )
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                text="🆘 Связь с менеджером", callback_data="help_manager"
+            )
+        ]
+    )
+    buttons.append(
+        [InlineKeyboardButton(text="🏠 В главное меню", callback_data="cancel_to_menu")]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 def delivery_keyboard() -> InlineKeyboardMarkup:
     """
     Клавиатура для выбора способа получения: доставка или самовывоз.
