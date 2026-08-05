@@ -10,25 +10,25 @@ visa:
   price_eur: 35
   fields:
     - id: full_name
-      prompt: "👤 Full name (as in passport)"
+      prompt: "👤 ФИО (как в паспорте)"
       type: text
       max_length: 255
     - id: birth_date
-      prompt: "🎂 Date of birth (DD.MM.YYYY)"
+      prompt: "🎂 Дата рождения (ДД.ММ.ГГГГ)"
       type: date
     - id: passport_number
-      prompt: "🛂 Passport number (series & number)"
+      prompt: "🛂 Номер паспорта (серия и номер)"
       type: passport_number
       max_length: 30
     - id: destination_country
-      prompt: "🌍 Destination country (country code, e.g. PL, RU, RS, AM)"
+      prompt: "🌍 Страна назначения (код страны, например PL, RU, RS, AM)"
       type: country_code
       max_length: 2
     - id: purpose
-      prompt: "✈️ Purpose of visit (tourism / business / study / other)"
+      prompt: "✈️ Цель визита (туризм / бизнес / учёба / другое)"
       type: text
       max_length: 255
-  example: "Olena Romenko\n18.11.1996\nFB363261\nPL\ntourism"
+  example: "Олена Роменко\n18.11.1996\nFB363261\nPL\ntourism"
 
 passport:
   name_ru: "🛂 Загранпаспорт"
@@ -38,18 +38,18 @@ passport:
   price_eur: 45
   fields:
     - id: full_name
-      prompt: "👤 Full name"
+      prompt: "👤 ФИО"
       type: text
       max_length: 255
     - id: birth_date
-      prompt: "🎂 Date of birth (DD.MM.YYYY)"
+      prompt: "🎂 Дата рождения (ДД.ММ.ГГГГ)"
       type: date
     - id: birth_place
-      prompt: "📍 Place of birth"
+      prompt: "📍 Место рождения"
       type: text
       max_length: 255
     - id: address
-      prompt: "🏠 Residential address"
+      prompt: "🏠 Адрес проживания"
       type: text
       max_length: 255
 
@@ -61,14 +61,14 @@ criminal_record_check:
   price_eur: 25
   fields:
     - id: full_name
-      prompt: "👤 Full name"
+      prompt: "👤 ФИО"
       type: text
       max_length: 255
     - id: birth_date
-      prompt: "🎂 Date of birth (DD.MM.YYYY)"
+      prompt: "🎂 Дата рождения (ДД.ММ.ГГГГ)"
       type: date
     - id: birth_place
-      prompt: "📍 Place of birth"
+      prompt: "📍 Место рождения"
       type: text
       max_length: 255
 
@@ -80,17 +80,17 @@ apostille:
   price_eur: 30
   fields:
     - id: full_name
-      prompt: "👤 Full name"
+      prompt: "👤 ФИО"
       type: text
       max_length: 255
     - id: document_type
-      prompt: "📄 Type of document to apostille"
+      prompt: "📄 Тип документа для апостиля"
       type: text
       max_length: 255
     - id: issue_date
-      prompt: "📅 Date of issue (DD.MM.YYYY)"
+      prompt: "📅 Дата выдачи (ДД.ММ.ГГГГ)"
       type: date
     - id: issuing_authority
-      prompt: "🏛 Issuing authority"
+      prompt: "🏛 Орган, выдавший документ"
       type: text
       max_length: 255

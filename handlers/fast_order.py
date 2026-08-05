@@ -97,7 +97,11 @@ async def process_fast_order(message: Message, state: FSMContext):
     lang = user_language(user)
     i18n = get_i18n()
 
-    await message.answer(i18n.get("fast_order_sent", language=lang))
+    from keyboards.buttons import main_menu_keyboard
+
+    await message.answer(
+        i18n.get("fast_order_sent", language=lang), reply_markup=main_menu_keyboard()
+    )
 
     await state.clear()
 
