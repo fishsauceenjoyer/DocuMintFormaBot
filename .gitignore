@@ -36,3 +36,9 @@ bot.db
 
 # uv
 .venv/
+# Allure reports and results
+allure-results/
+allure-report/
+htmlcov/
+.pytest_cache/
+.coverage
