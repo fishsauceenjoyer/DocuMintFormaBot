@@ -1,0 +1,2 @@
+Configuration errors found:
+  - ROUTING_VISA is not set in .env file
