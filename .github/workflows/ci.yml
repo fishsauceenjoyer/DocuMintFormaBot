@@ -56,6 +56,7 @@ jobs:
           uv run pytest -v --alluredir=allure-results --cov --cov-report=term-missing
 
       - name: 📊 Сборка Allure отчета
+        id: allure-report
         uses: simple-elf/allure-report-action@master
         if: always()
         with:
@@ -65,7 +66,11 @@ jobs:
 
       - name: 🚀 Публикация отчета на GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
-        if: always()
+        if: always() && github.ref == 'refs/heads/main'
         with:
           publish_branch: gh-pages
           publish_dir: allure-report
+          keep_files: true  # Сохранять историю отчетов
+          user_name: github-actions
+          user_email: github-actions@github.com
+          deploy_key: ${{ secrets.ALLURE_DEPLOY_KEY }}
