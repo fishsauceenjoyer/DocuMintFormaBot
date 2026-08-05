@@ -470,7 +470,13 @@ class TestTextEquivalenceClasses:
             "A",  # Single char (min boundary)
             "A" * 255,  # Max boundary
         ],
-        ids=["valid_latin", "valid_cyrillic", "valid_two_words", "min_boundary", "max_length"],
+        ids=[
+            "valid_latin",
+            "valid_cyrillic",
+            "valid_two_words",
+            "min_boundary",
+            "max_length",
+        ],
     )
     def test_valid_text_accepted(self, value):
         result = validate_field_value(value, "text", field_name="full_name")
@@ -526,7 +532,19 @@ class TestDateEquivalenceClasses:
             ("30.02.2001", "не существует"),  # Feb 30 (impossible, non-leap)
             ("29.02.2001", "не существует"),  # Feb 29 non-leap year
         ],
-        ids=["empty", "day_over_31", "day_zero", "month_over_12", "month_zero", "year_below_1900", "wrong_format_iso", "wrong_separator", "feb31_impossible", "feb30_nonleap", "feb29_nonleap"],
+        ids=[
+            "empty",
+            "day_over_31",
+            "day_zero",
+            "month_over_12",
+            "month_zero",
+            "year_below_1900",
+            "wrong_format_iso",
+            "wrong_separator",
+            "feb31_impossible",
+            "feb30_nonleap",
+            "feb29_nonleap",
+        ],
     )
     def test_invalid_date_rejected(self, value, expected_error):
         result = validate_field_value(value, "date", field_name="birth_date")
@@ -613,7 +631,13 @@ class TestPassportNumberEquivalenceClasses:
             "A" * 30,  # Max boundary (30 chars)
             "fb363261",  # Lowercase (normalized to upper)
         ],
-        ids=["standard", "with_separators", "min_boundary", "max_boundary", "lowercase"],
+        ids=[
+            "standard",
+            "with_separators",
+            "min_boundary",
+            "max_boundary",
+            "lowercase",
+        ],
     )
     def test_valid_passport_accepted(self, value):
         result = validate_field_value(value, "passport_number", field_name="passport")
@@ -684,7 +708,16 @@ class TestQuantityBoundaryValues:
             ("qty_6", False),  # Above max
             ("qty_99", False),  # Far above max
         ],
-        ids=["qty_1_min", "qty_2", "qty_3", "qty_4", "qty_5_max", "qty_0_below", "qty_6_above", "qty_99_far_above"],
+        ids=[
+            "qty_1_min",
+            "qty_2",
+            "qty_3",
+            "qty_4",
+            "qty_5_max",
+            "qty_0_below",
+            "qty_6_above",
+            "qty_99_far_above",
+        ],
     )
     @pytest.mark.asyncio
     async def test_quantity_boundary(
