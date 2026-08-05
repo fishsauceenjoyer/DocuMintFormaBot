@@ -6,6 +6,7 @@ registers all aiogram routers, and starts Telegram polling.
 
 import logging
 import os
+import sys
 from typing import Any
 
 from aiogram import Bot, Dispatcher
@@ -17,6 +18,7 @@ from handlers.admin import router as admin_router
 from handlers.fast_order import router as fast_order_router
 from handlers.order import router as order_router
 from handlers.start import router as start_router
+from utils.polling_retry import run_polling_with_retry
 
 validate_config()
 
@@ -78,8 +80,11 @@ async def main() -> None:
 
     logger.info("Bot started successfully!")
 
-    # Start polling
-    await dp.start_polling(bot)
+    # Start polling with retry on Telegram API network errors.  On a
+    # permanent network failure the wrapper returns a non-zero exit code so
+    # the orchestrator (Docker ``restart: unless-stopped``, systemd) can
+    # restart the process in a clean state.
+    sys.exit(await run_polling_with_retry(dp, bot))
 
 
 if __name__ == "__main__":
