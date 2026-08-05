@@ -24,6 +24,12 @@ The bot's entire questionnaire flow is driven dynamically by `data/business_conf
 1. **Verify Integration:** Check if the current configuration satisfies 100% of the new specifications. Spot missing fields, incorrect pricing, or language localization gaps (EN/RU/UK).
 2. **Draft Test Cases:** Provide a list of automated validation tests (`pytest` code) that must be added to ensure nobody accidentally breaks this new business rule in future updates.
 
+⚠️ STRIKT AI GIT FLOW RULES:
+- Тебе категорически ЗАПРЕЩЕНО делать пуш напрямую в ветки `main` или `master`.
+- Любая разработка, рефакторинг или написание тестов выполняются СТРОГО в изолированной фича-ветке (например, `feat/...` или `chore/...`).
+- После успешного завершения локальных проверок (`uv run pytest`) ты обязан сделать пуш СВОЕЙ текущей ветки (`git push origin HEAD`).
+- Твоя финальная задача — заполнить и вывести текст описания Pull Request на основе файла `.github/PULL_REQUEST_TEMPLATE.md` для слияния твоей ветки в `main`. Слияние делает только человек.
+
 # OUTPUT FORMAT
 ## 🗺 Gap Analysis
 - [ ] [Requirement 1 Status: E.g., Matches / Missing field X / Wrong price]

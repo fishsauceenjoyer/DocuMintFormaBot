@@ -7,6 +7,7 @@ Mutates 3 simple targets:
 
 Runs `uv run pytest` for each mutant and reports killed/survived.
 """
+
 from __future__ import annotations
 
 import ast
@@ -33,8 +34,8 @@ MUTATIONS = [
     },
     {
         "name": "change demo_document_ref_PATTERN regex",
-        "find": "demo_document_ref_PATTERN: str = r\"^[A-Z0-9\\s\\-\\.\\/]{3,30}$\"",
-        "replace": "demo_document_ref_PATTERN: str = r\"^[A-Z0-9]{3,30}$\"",
+        "find": 'demo_document_ref_PATTERN: str = r"^[A-Z0-9\\s\\-\\.\\/]{3,30}$"',
+        "replace": 'demo_document_ref_PATTERN: str = r"^[A-Z0-9]{3,30}$"',
     },
 ]
 
