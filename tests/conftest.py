@@ -22,12 +22,29 @@ import datetime
 import logging
 import os
 import socket
+import sys
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import pytest
 from aiogram.types import CallbackQuery, Chat, InaccessibleMessage, Message, User
 
 logger = logging.getLogger(__name__)
+
+# ── mutmut compatibility ───────────────────────────────────────────────
+# When mutmut runs tests, it copies only data/ and tests/ to a mutants/
+# subdirectory.  Other source packages (fsm, handlers, services, etc.) are
+# not copied.  We detect the mutants/ environment and add the real project
+# root to sys.path so those imports still resolve.
+# The data/ package resolves from mutants/data/ first (since '' / cwd is
+# ahead of the appended path), so mutated copies are always tested.
+_this_dir = Path(__file__).resolve().parent
+_parent_dir = _this_dir.parent
+if _parent_dir.name == "mutants":
+    _real_root = str(_parent_dir.parent)
+    if _real_root not in sys.path:
+        sys.path.append(_real_root)
+# ── end mutmut compatibility ────────────────────────────────────────────
 
 
 # ── CLI option ──────────────────────────────────────────────────────────
