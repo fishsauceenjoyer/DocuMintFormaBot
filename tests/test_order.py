@@ -151,7 +151,11 @@ class TestProcessPayment:
     """Tests for payment method selection."""
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("method", ["blik", "uah", "usdt"])
+    @pytest.mark.parametrize(
+        "method",
+        ["blik", "uah", "usdt"],
+        ids=["blik", "uah", "usdt"],
+    )
     async def test_payment_method_sets_state(
         self, mock_fsm, clean_user_sessions, method
     ):

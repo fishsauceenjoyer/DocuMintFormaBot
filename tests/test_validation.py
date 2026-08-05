@@ -470,6 +470,13 @@ class TestTextEquivalenceClasses:
             "A",  # Single char (min boundary)
             "A" * 255,  # Max boundary
         ],
+        ids=[
+            "valid_latin",
+            "valid_cyrillic",
+            "valid_two_words",
+            "min_boundary",
+            "max_length",
+        ],
     )
     def test_valid_text_accepted(self, value):
         result = validate_field_value(value, "text", field_name="full_name")
@@ -484,6 +491,7 @@ class TestTextEquivalenceClasses:
             ("Robert'); DROP TABLE users;--", "недопустимые символы"),  # SQL injection
             ("<script>alert(1)</script>", "недопустимые символы"),  # XSS
         ],
+        ids=["empty", "too_long", "whitespace_only", "sql_injection", "xss_script"],
     )
     def test_invalid_text_rejected(self, value, expected_error):
         result = validate_field_value(value, "text", field_name="full_name")
@@ -503,6 +511,7 @@ class TestDateEquivalenceClasses:
             "28.02.2001",  # Valid: non-leap year Feb 28
             "15.06.1990",  # Valid: mid-year
         ],
+        ids=["start_of_year", "end_of_year", "leap_feb29", "nonleap_feb28", "mid_year"],
     )
     def test_valid_date_accepted(self, value):
         result = validate_field_value(value, "date", field_name="birth_date")
@@ -523,6 +532,19 @@ class TestDateEquivalenceClasses:
             ("30.02.2001", "не существует"),  # Feb 30 (impossible, non-leap)
             ("29.02.2001", "не существует"),  # Feb 29 non-leap year
         ],
+        ids=[
+            "empty",
+            "day_over_31",
+            "day_zero",
+            "month_over_12",
+            "month_zero",
+            "year_below_1900",
+            "wrong_format_iso",
+            "wrong_separator",
+            "feb31_impossible",
+            "feb30_nonleap",
+            "feb29_nonleap",
+        ],
     )
     def test_invalid_date_rejected(self, value, expected_error):
         result = validate_field_value(value, "date", field_name="birth_date")
@@ -541,6 +563,7 @@ class TestEmailEquivalenceClasses:
             "a@b.co",  # Minimal valid
             "user+tag@mail.com",  # Plus addressing
         ],
+        ids=["standard", "with_dot", "minimal", "plus_addressing"],
     )
     def test_valid_email_accepted(self, value):
         result = validate_field_value(value, "email", field_name="email")
@@ -555,6 +578,7 @@ class TestEmailEquivalenceClasses:
             ("@domain.com", "email"),  # No local part
             ("user@domain", "email"),  # No TLD
         ],
+        ids=["empty", "no_at", "no_domain", "no_local_part", "no_tld"],
     )
     def test_invalid_email_rejected(self, value, expected_error):
         result = validate_field_value(value, "email", field_name="email")
@@ -573,6 +597,7 @@ class TestPhoneEquivalenceClasses:
             "+1 (555) 123-4567",  # International format
             "123456",  # 6 digits (min boundary)
         ],
+        ids=["polish_standard", "with_spaces_dashes", "international", "min_boundary"],
     )
     def test_valid_phone_accepted(self, value):
         result = validate_field_value(value, "phone", field_name="phone")
@@ -586,6 +611,7 @@ class TestPhoneEquivalenceClasses:
             ("12345", "телефон"),  # Too short (5 chars)
             ("abc", "телефон"),  # Non-numeric
         ],
+        ids=["empty", "too_short_3", "too_short_5", "non_numeric"],
     )
     def test_invalid_phone_rejected(self, value, expected_error):
         result = validate_field_value(value, "phone", field_name="phone")
@@ -605,6 +631,13 @@ class TestPassportNumberEquivalenceClasses:
             "A" * 30,  # Max boundary (30 chars)
             "fb363261",  # Lowercase (normalized to upper)
         ],
+        ids=[
+            "standard",
+            "with_separators",
+            "min_boundary",
+            "max_boundary",
+            "lowercase",
+        ],
     )
     def test_valid_passport_accepted(self, value):
         result = validate_field_value(value, "passport_number", field_name="passport")
@@ -618,6 +651,7 @@ class TestPassportNumberEquivalenceClasses:
             ("A" * 31, "от 3"),  # Too long (31 chars)
             ("AB@123", "формат"),  # Invalid char
         ],
+        ids=["empty", "too_short", "too_long", "invalid_char"],
     )
     def test_invalid_passport_rejected(self, value, expected_error):
         result = validate_field_value(value, "passport_number", field_name="passport")
@@ -637,6 +671,7 @@ class TestCountryCodeEquivalenceClasses:
             "AM",  # Armenia
             "pl",  # Lowercase (normalized)
         ],
+        ids=["pl", "ru", "rs", "am", "lowercase"],
     )
     def test_valid_country_code_accepted(self, value):
         result = validate_field_value(value, "country_code", field_name="country")
@@ -650,6 +685,7 @@ class TestCountryCodeEquivalenceClasses:
             ("POL", "страны"),  # Wrong length (3 chars)
             ("P", "страны"),  # Wrong length (1 char)
         ],
+        ids=["empty", "not_allowed", "too_long", "too_short"],
     )
     def test_invalid_country_code_rejected(self, value, expected_error):
         result = validate_field_value(value, "country_code", field_name="country")
@@ -671,6 +707,16 @@ class TestQuantityBoundaryValues:
             ("qty_0", False),  # Below min
             ("qty_6", False),  # Above max
             ("qty_99", False),  # Far above max
+        ],
+        ids=[
+            "qty_1_min",
+            "qty_2",
+            "qty_3",
+            "qty_4",
+            "qty_5_max",
+            "qty_0_below",
+            "qty_6_above",
+            "qty_99_far_above",
         ],
     )
     @pytest.mark.asyncio
