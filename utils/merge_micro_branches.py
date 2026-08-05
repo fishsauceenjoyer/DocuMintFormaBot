@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 import argparse
-import subprocess
+import subprocess  # nosec: B404
 import sys
 from typing import List, Optional
 
@@ -29,7 +29,7 @@ DEFAULT_TARGET = "feature/combined-release"
 
 def run_git(args: List[str], check: bool = True) -> subprocess.CompletedProcess:
     """Выполнить git-команду и вернуть результат."""
-    return subprocess.run(
+    return subprocess.run(  # nosec: B603 B607
         ["git", *args],
         capture_output=True,
         text=True,
