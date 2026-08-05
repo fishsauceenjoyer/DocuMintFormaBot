@@ -61,6 +61,51 @@ uses `truncate_for_storage` with the matching per-field limits.
 5. **Language coverage**: every user-facing string must exist in `locales/ru.json`,
    `locales/en.json`, `locales/uk.json`.
 
+## Field Types
+
+The `Field` class in `templates/fields.py` supports the following types:
+
+| Type | Description | Extra params |
+|------|-------------|--------------|
+| `text` | Free text (max 255 chars) | `max_length` |
+| `date` | Date in `DD.MM.YYYY` format | — |
+| `email` | Email address | — |
+| `phone` | Phone number | — |
+| `optional_text` | Optional free text | `max_length`, `optional=True` |
+| `passport_number` | Passport number (A-Z, 0-9, -./) | — |
+| `country_code` | 2-letter country code | — |
+| `choice` | Pick one value from a list | `choices: list[str]` |
+| `integer` | Whole number within a range | `min_value`, `max_value` |
+
+### `choice` fields
+
+```python
+Field(
+    "size",
+    "📐 Выберите размер",
+    "choice",
+    choices=["A4", "A3", "A2"],
+)
+```
+
+- The bot renders an inline keyboard with one button per choice.
+- Validation is case-insensitive; the canonical value from `choices` is stored.
+- The `choice_keyboard()` helper in `keyboards/buttons.py` builds the keyboard.
+
+### `integer` fields
+
+```python
+Field(
+    "quantity",
+    "🔢 Количество (1–5)",
+    "integer",
+    min_value=1,
+    max_value=5,
+)
+```
+
+- The user types a whole number; validation enforces `min_value`/`max_value`.
+
 ## Common Pitfalls
 
 - Forgetting that `criminal_record_check` and other multi-word codes break naive
@@ -68,3 +113,5 @@ uses `truncate_for_storage` with the matching per-field limits.
 - Hardcoding a price that differs from `config/templates.yaml`.
 - Adding a field type without a corresponding branch in `utils/validation.py`.
 - Storing delivery values longer than the DB column permits (see table above).
+- Adding a `choice` field without `choices` — validation will reject all values.
+- Adding an `integer` field without `min_value`/`max_value` — any integer is accepted.
