@@ -24,6 +24,12 @@ The codebase has changed (either a new feature was added or a business flow in `
 ```
 
 # MANDATORY INSTRUCTIONS
+🚫 CRITICAL WINDOWS POWERSHELL EXECUTION RESTRICTIONS:
+- THE OPERATORS `&&` AND `||` ARE STRIKTLY FORBIDDEN! They cause fatal ParserError crashes.
+- Every command MUST be executed as an isolated string in a separate `execute_command` call.
+- NEVER chain commands together. 
+- For checking if folder exists, use native PowerShell: `Test-Path allure-results`.
+
 1. **Adapt and Expand:** Update existing tests to avoid false failures. Write new tests covering the Happy Path, edge cases (boundaries), and negative scenarios (invalid input).
 2. **Isolate:** Ensure all network/Telegram API requests are strictly mocked using `unittest.mock` or `pytest-mock`. The test suite must remain 100% stable offline.
 3. **State Machine Verification:** If an FSM step was added/changed, write a test that explicitly asserts the user transitions through the correct states (`State1 -> State2 -> State3`).

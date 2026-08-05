@@ -23,6 +23,12 @@ You need to implement a new feature or modify an existing business process based
 ```
 
 # EXECUTION RULES
+🚫 CRITICAL WINDOWS POWERSHELL EXECUTION RESTRICTIONS:
+- THE OPERATORS `&&` AND `||` ARE STRIKTLY FORBIDDEN! They cause fatal ParserError crashes.
+- Every command MUST be executed as an isolated string in a separate `execute_command` call.
+- NEVER chain commands together. 
+- For checking if folder exists, use native PowerShell: `Test-Path allure-results`.
+
 1. **Security First:** Never use raw SQL strings, never log sensitive data, and strictly validate all user inputs.
 2. **No Technical Debt:** Avoid hardcoding values. Use `data/business_config.py` or `.env` configurations.
 3. **Zero-Broke Deployment:** Ensure your output code fits perfectly into the existing codebase without breaking adjacent features.
