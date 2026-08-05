@@ -88,17 +88,17 @@ def main() -> int:
             TARGET_FILE.write_text(ORIGINAL_CODE, encoding="utf-8")
 
     total = len(results)
-    killed = sum(1 for r in results if r["killed"])
-    survived = total - killed
-    score = (killed / total * 100) if total else 0.0
+    killed_count: int = sum(1 for r in results if r["killed"])
+    survived = total - killed_count
+    score = (killed_count / total * 100) if total else 0.0
 
     print("\n=== MUTATION REPORT ===")
     print(f"total mutants : {total}")
-    print(f"killed       : {killed}")
+    print(f"killed       : {killed_count}")
     print(f"survived     : {survived}")
     print(f"mutation score: {score:.2f}%")
 
-    return 0 if killed == total else 1
+    return 0 if killed_count == total else 1
 
 
 if __name__ == "__main__":
