@@ -65,11 +65,12 @@ markers = [
     "e2e: end-to-end flow tests",
 ]
 asyncio_mode = "auto"
+pythonpath = ["."]
 addopts = "-v --tb=short --cov --cov-report=term-missing --cov-report=html"
 
 
 [tool.coverage.run]
-source = ["handlers", "services", "utils", "db", "templates", "fsm", "keyboards", "config.py"]
+source = ["handlers", "services", "utils", "db", "templates", "fsm", "keyboards", "config.py", "data"]
 omit = [
     "*/tests/*",
     "*/migrations/*",
