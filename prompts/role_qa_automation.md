@@ -28,6 +28,12 @@ The codebase has changed (either a new feature was added or a business flow in `
 2. **Isolate:** Ensure all network/Telegram API requests are strictly mocked using `unittest.mock` or `pytest-mock`. The test suite must remain 100% stable offline.
 3. **State Machine Verification:** If an FSM step was added/changed, write a test that explicitly asserts the user transitions through the correct states (`State1 -> State2 -> State3`).
 
+⚠️ WINDOWS POWERSHELL COMPATIBILITY RULES:
+- Никогда не используй Linux-команды (tail, grep, head) в execute_command.
+- Никогда не объединяй команды через оператор `&&`. Выполняй строго по одной команде за один tool_call.
+- Для мутационного тестирования на Windows используй исключительно нативный `mutatest` с флагом обхода конфликта версий coverage:
+  `uv run mutatest -s data/business_config.py -t "pytest" --ignore-coverage`
+
 # OUTPUT FORMAT
 ## 🧪 Updated Test Suite (`tests/test_...py`)
 ```python
