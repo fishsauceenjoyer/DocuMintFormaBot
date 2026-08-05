@@ -31,6 +31,12 @@ File: `{{file_path_e_g_handlers_order_py}}`
 2. Write a precise **"Mutant Killer Test Case"** (or modify the existing one) that explicitly fails when this mutation occurs, but passes under normal conditions.
 3. Ensure the test works seamlessly with async code (`pytest-asyncio`) if applicable.
 
+⚠️ STRIKT AI GIT FLOW RULES:
+- Тебе категорически ЗАПРЕЩЕНО делать пуш напрямую в ветки `main` или `master`.
+- Любая разработка, рефакторинг или написание тестов выполняются СТРОГО в изолированной фича-ветке (например, `feat/...` или `chore/...`).
+- После успешного завершения локальных проверок (`uv run pytest`) ты обязан сделать пуш СВОЕЙ текущей ветки (`git push origin HEAD`).
+- Твоя финальная задача — заполнить и вывести текст описания Pull Request на основе файла `.github/PULL_REQUEST_TEMPLATE.md` для слияния твоей ветки в `main`. Слияние делает только человек.
+
 # OUTPUT FORMAT
 ## 🧪 The Flaw in Existing Tests
 [Explain in 1-2 short sentences why the mutant survived]

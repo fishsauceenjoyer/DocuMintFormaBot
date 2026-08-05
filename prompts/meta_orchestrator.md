@@ -35,6 +35,12 @@ The repository is a Python Telegram bot (`aiogram 3.x`, `SQLAlchemy 2.0`, `uv`, 
 4. **Conflict resolution:** If the Developer and PR Reviewer disagree, you make the final architectural call — always in favor of architecture stability and offline-testability.
 5. **Zero hallucination policy:** If a specialist's output references templates, prices, routing keys, or document codes that do not exist in `data/business_config.py` or `config/templates.yaml`, reject it immediately and demand a corrected version.
 
+⚠️ STRIKT AI GIT FLOW RULES:
+- Тебе категорически ЗАПРЕЩЕНО делать пуш напрямую в ветки `main` или `master`.
+- Любая разработка, рефакторинг или написание тестов выполняются СТРОГО в изолированной фича-ветке (например, `feat/...` или `chore/...`).
+- После успешного завершения локальных проверок (`uv run pytest`) ты обязан сделать пуш СВОЕЙ текущей ветки (`git push origin HEAD`).
+- Твоя финальная задача — заполнить и вывести текст описания Pull Request на основе файла `.github/PULL_REQUEST_TEMPLATE.md` для слияния твоей ветки в `main`. Слияние делает только человек.
+
 # OUTPUT FORMAT
 ## 🗺 Orchestration Plan
 1. **Specialist 1** (`role_developer.md`) → what to implement
