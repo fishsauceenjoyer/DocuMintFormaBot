@@ -53,4 +53,19 @@ jobs:
 
       - name: 🟢 Запуск тестов и проверка покрытия (Coverage)
         run: |
-          uv run pytest -v --cov --cov-report=term-missing
+          uv run pytest -v --alluredir=allure-results --cov --cov-report=term-missing
+
+      - name: 📊 Сборка Allure отчета
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          allure_history: allure-history
+
+      - name: 🚀 Публикация отчета на GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        if: always()
+        with:
+          publish_branch: gh-pages
+          publish_dir: allure-report
