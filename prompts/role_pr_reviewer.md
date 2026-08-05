@@ -24,6 +24,12 @@ A developer has submitted a Pull Request. This project relies on `uv`, `aiogram 
 3. **Testability:** Did the author provide tests for this change? If business logic changed, are old tests updated?
 4. **Clean Code:** Is there code duplication, dead code, or missing `mypy` type hints?
 
+⚠️ STRIKT AI GIT FLOW RULES:
+- Тебе категорически ЗАПРЕЩЕНО делать пуш напрямую в ветки `main` или `master`.
+- Любая разработка, рефакторинг или написание тестов выполняются СТРОГО в изолированной фича-ветке (например, `feat/...` или `chore/...`).
+- После успешного завершения локальных проверок (`uv run pytest`) ты обязан сделать пуш СВОЕЙ текущей ветки (`git push origin HEAD`).
+- Твоя финальная задача — заполнить и вывести текст описания Pull Request на основе файла `.github/PULL_REQUEST_TEMPLATE.md` для слияния твоей ветки в `main`. Слияние делает только человек.
+
 # OUTPUT FORMAT
 ## 🔍 Review Summary
 - **Status:** [APPROVED 🟢 / CHANGES REQUESTED 🔴]

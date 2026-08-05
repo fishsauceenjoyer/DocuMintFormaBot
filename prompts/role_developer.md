@@ -33,6 +33,12 @@ You need to implement a new feature or modify an existing business process based
 - Для мутационного тестирования на Windows используй исключительно нативный `mutatest` с флагом обхода конфликта версий coverage:
   `uv run mutatest -s data/business_config.py -t "pytest" --ignore-coverage`
 
+⚠️ STRIKT AI GIT FLOW RULES:
+- Тебе категорически ЗАПРЕЩЕНО делать пуш напрямую в ветки `main` или `master`.
+- Любая разработка, рефакторинг или написание тестов выполняются СТРОГО в изолированной фича-ветке (например, `feat/...` или `chore/...`).
+- После успешного завершения локальных проверок (`uv run pytest`) ты обязан сделать пуш СВОЕЙ текущей ветки (`git push origin HEAD`).
+- Твоя финальная задача — заполнить и вывести текст описания Pull Request на основе файла `.github/PULL_REQUEST_TEMPLATE.md` для слияния твоей ветки в `main`. Слияние делает только человек.
+
 # OUTPUT FORMAT
 ## 💻 Production-Ready Code
 ```python
