@@ -77,7 +77,7 @@ def main() -> int:
             results.append(
                 {
                     "name": mutation["name"],
-                    "killed": killed,
+                    "killed": bool(killed),
                     "returncode": code,
                 }
             )
