@@ -2,9 +2,13 @@ name: 🤖 AI-Driven Quality Gates (CI/CD)
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "develop" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "develop" ]
+
+permissions:
+  contents: write
+  pages: write
 
 jobs:
   quality_and_security:
