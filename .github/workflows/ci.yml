@@ -2,9 +2,9 @@ name: 🤖 AI-Driven Quality Gates (CI/CD)
 
 on:
   push:
-    branches: [ "feat/payment-methods-rename" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "feat/payment-methods-rename" ]
+    branches: [ "main", "master" ]
 
 jobs:
   quality_and_security:
