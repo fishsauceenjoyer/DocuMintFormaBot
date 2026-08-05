@@ -116,13 +116,13 @@ DELIVERY_PRICE_PLN: int = 20
 DELIVERY_PRICE_EUR: int = 5
 
 PAYMENT_DETAILS: Dict[str, str] = {
-    "blik": "💳 Blik przelew na numer telefonu:\n"
-            "Nr tel: +48 123 456 789\n"
-            "Odbiorca: Consular Services Ltd.",
+    "blik": "💳 Blik перевод на номер телефона:\n"
+            "Номер: +48 123 456 789\n"
+            "Получатель: Consular Services Ltd.",
     "uah": "🇺🇦 Перевод на гривневую карту ПриватБанк:\n"
            "Карта: 5168 7456 3456 7890\n"
            "Получатель: Иванова А.",
-    "usdt": "₿ USDT (TRC20): TXYZ... (wallet address)",
+    "usdt": "₿ USDT (TRC20): TXYZ... (адрес кошелька)",
 }
 
 
@@ -131,7 +131,7 @@ def get_template(doc_code: str) -> Optional[Dict[str, Any]]:
 
 
 def get_all_templates() -> List[tuple]:
-    return [(k, v["name_en"]) for k, v in DOCUMENT_TEMPLATES.items()]
+    return [(k, v["name_ru"]) for k, v in DOCUMENT_TEMPLATES.items()]
 
 
 def get_price_pln(doc_code: str) -> int:
