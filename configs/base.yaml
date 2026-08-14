@@ -1,0 +1,63 @@
+# ============================================
+# Base business configuration
+# ============================================
+# This file contains the general business structure:
+# version, currencies, delivery prices, payment details,
+# allowed countries, demo_document pattern, and routing keys.
+#
+# Edit this file to change business-wide settings without
+# touching Python code.
+
+version: "1.0"
+
+# ── Currencies ────────────────────────────────
+currencies:
+  supported: ["EUR", "PLN"]
+  default: "EUR"
+
+# ── Delivery prices ───────────────────────────
+delivery:
+  price:
+    PLN: 20
+    EUR: 5
+
+# ── Payment details ───────────────────────────
+payment_methods:
+  blik: |
+    💳 Blik перевод на номер телефона:
+    Номер: +48 123 456 789
+    Получатель: Consular Services Ltd.
+  uah: |
+    🇺🇦 Перевод на гривневую карту ПриватБанк:
+    Карта: 5168 7456 3456 7890
+    Получатель: Иванова А.
+  usdt: "₿ USDT (TRC20): TXYZ... (адрес кошелька)"
+
+# ── Allowed destination countries ─────────────
+countries:
+  PL:
+    en: "Poland"
+    ru: "Польша"
+    uk: "Польща"
+  RU:
+    en: "Russia"
+    ru: "Россия"
+    uk: "Росія"
+  RS:
+    en: "Serbia"
+    ru: "Сербия"
+    uk: "Сербія"
+  AM:
+    en: "Armenia"
+    ru: "Армения"
+    uk: "Вірменія"
+
+# ── demo_document number format (regex) ────────────
+demo_document_ref_pattern: "^[A-Z0-9\\s\\-\\.\\/]{3,30}$"
+
+# ── Routing keys (document code → env var) ────
+routing_keys:
+  demo_service: "ROUTING_demo_service"
+  demo_document: "ROUTING_demo_document"
+  demo_check_check: "ROUTING_demo_check"
+  apostille: "ROUTING_APOSTILLE"
