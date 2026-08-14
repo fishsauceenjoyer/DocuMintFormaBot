@@ -94,6 +94,7 @@ def calculate_total_price(session: Dict[str, Any]) -> int:
 
 # ── Document field handlers ──────────────────────────────────────────
 
+
 @router.message(OrderState.choosing_document)
 async def fallback_choosing_document(message: Message, state: FSMContext):
     """Fallback: user sent text instead of choosing a document button."""
