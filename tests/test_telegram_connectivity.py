@@ -36,7 +36,10 @@ Usage
 import logging
 
 import pytest
-from conftest import _bot_token_available, _telegram_api_reachable
+from conftest import (  # type: ignore[attr-defined]
+    _bot_token_available,
+    _telegram_api_reachable,
+)
 
 logger = logging.getLogger(__name__)
 
