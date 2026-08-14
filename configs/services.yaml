@@ -1,0 +1,203 @@
+# ============================================
+# Services configuration
+# ============================================
+# Each service defines:
+#   - id: unique service identifier
+#   - name: localized display names (ru/en/uk)
+#   - price: base price (EUR) + optional PLN price + currency
+#   - fields: list of input fields
+#   - limits: order constraints
+#
+# Edit this file to add/remove services without touching Python code.
+
+services:
+  - id: visa
+    name:
+      ru: "🗺 Визовая анкета"
+      en: "🗺 Visa application"
+      uk: "🗺 Візова анкета"
+    price:
+      base: 35
+      pln: 150
+      currency: EUR
+    fields:
+      - id: full_name
+        prompt: "👤 ФИО (как в паспорте)"
+        type: text
+        max_length: 255
+      - id: birth_date
+        prompt: "🎂 Дата рождения (ДД.ММ.ГГГГ)"
+        type: date
+      - id: passport_number
+        prompt: "🛂 Номер паспорта (серия и номер)"
+        type: passport_number
+        max_length: 30
+      - id: destination_country
+        prompt: "🌍 Страна назначения (код страны, например PL, RU, RS, AM)"
+        type: country_code
+        max_length: 2
+      - id: purpose
+        prompt: "✈️ Цель визита (туризм / бизнес / учёба / другое)"
+        type: text
+        max_length: 255
+    limits:
+      max_per_order: 5
+
+  - id: passport
+    name:
+      ru: "🛂 Загранпаспорт"
+      en: "🛂 Foreign passport"
+      uk: "🛂 Загранпаспорт"
+    price:
+      base: 45
+      pln: 200
+      currency: EUR
+    fields:
+      - id: full_name
+        prompt: "👤 ФИО"
+        type: text
+        max_length: 255
+      - id: birth_date
+        prompt: "🎂 Дата рождения (ДД.ММ.ГГГГ)"
+        type: date
+      - id: birth_place
+        prompt: "📍 Место рождения"
+        type: text
+        max_length: 255
+      - id: address
+        prompt: "🏠 Адрес проживания"
+        type: text
+        max_length: 255
+    limits:
+      max_per_order: 5
+
+  - id: criminal_record_check
+    name:
+      ru: "📜 Справка о несудимости"
+      en: "📜 Criminal record check"
+      uk: "📜 Довідка про несудимість"
+    price:
+      base: 25
+      pln: 100
+      currency: EUR
+    fields:
+      - id: full_name
+        prompt: "👤 ФИО"
+        type: text
+        max_length: 255
+      - id: birth_date
+        prompt: "🎂 Дата рождения (ДД.ММ.ГГГГ)"
+        type: date
+      - id: birth_place
+        prompt: "📍 Место рождения"
+        type: text
+        max_length: 255
+    limits:
+      max_per_order: 5
+
+  - id: apostille
+    name:
+      ru: "📑 Апостиль"
+      en: "📑 Apostille"
+      uk: "📑 Апостиль"
+    price:
+      base: 30
+      pln: 120
+      currency: EUR
+    fields:
+      - id: full_name
+        prompt: "👤 ФИО"
+        type: text
+        max_length: 255
+      - id: document_type
+        prompt: "📄 Тип документа для апостиля"
+        type: text
+        max_length: 255
+      - id: issue_date
+        prompt: "📅 Дата выдачи (ДД.ММ.ГГГГ)"
+        type: date
+      - id: issuing_authority
+        prompt: "🏛 Орган, выдавший документ"
+        type: text
+        max_length: 255
+    limits:
+      max_per_order: 5
+
+  # ── Demo poster services (from business_config_demo.py) ──────────
+  - id: poster_terminator1
+    name:
+      ru: "🎬 Терминатор 1"
+      en: "🎬 Terminator 1"
+      uk: "🎬 Термінатор 1"
+    price:
+      base: 10
+      pln: 40
+      currency: EUR
+    fields:
+      - id: size
+        prompt: "📐 Выберите размер постера"
+        type: choice
+        choices: ["A4", "A3", "A2"]
+      - id: color
+        prompt: "🎨 Выберите цветность"
+        type: choice
+        choices: ["color", "bw"]
+      - id: quantity
+        prompt: "🔢 Количество экземпляров (1–5)"
+        type: integer
+        min: 1
+        max: 5
+    limits:
+      max_per_order: 5
+
+  - id: poster_terminator2
+    name:
+      ru: "🎬 Терминатор 2"
+      en: "🎬 Terminator 2"
+      uk: "🎬 Термінатор 2"
+    price:
+      base: 15
+      pln: 60
+      currency: EUR
+    fields:
+      - id: size
+        prompt: "📐 Выберите размер постера"
+        type: choice
+        choices: ["A4", "A3", "A2"]
+      - id: color
+        prompt: "🎨 Выберите цветность"
+        type: choice
+        choices: ["color", "bw"]
+      - id: quantity
+        prompt: "🔢 Количество экземпляров (1–5)"
+        type: integer
+        min: 1
+        max: 5
+    limits:
+      max_per_order: 5
+
+  - id: poster_predator
+    name:
+      ru: "🎬 Хищник"
+      en: "🎬 Predator"
+      uk: "🎬 Хижак"
+    price:
+      base: 20
+      pln: 80
+      currency: EUR
+    fields:
+      - id: size
+        prompt: "📐 Выберите размер постера"
+        type: choice
+        choices: ["A4", "A3", "A2"]
+      - id: color
+        prompt: "🎨 Выберите цветность"
+        type: choice
+        choices: ["color", "bw"]
+      - id: quantity
+        prompt: "🔢 Количество экземпляров (1–5)"
+        type: integer
+        min: 1
+        max: 5
+    limits:
+      max_per_order: 5

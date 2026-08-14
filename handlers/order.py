@@ -18,6 +18,7 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
 
 from config import DELIVERY_PRICE_EUR, DELIVERY_PRICE_PLN
+from config.loader import get_loader
 
 # Import DB functions (lazy — imported inside handlers to avoid circular imports)
 from db.crud import AsyncSessionLocal, create_order, create_order_item
@@ -37,6 +38,9 @@ _sessions_lock = asyncio.Lock()
 # For the demo, default to EUR. Change this logic as needed.
 DEFAULT_CURRENCY = "EUR"
 
+# Module-level config loader
+_loader = get_loader()
+
 
 def _currency_symbol(currency: str) -> str:
     return "€" if currency == "EUR" else "zł"
@@ -44,63 +48,11 @@ def _currency_symbol(currency: str) -> str:
 
 def _currency_price(currency: str, doc_code: str) -> int:
     """Return the price for a document in the requested currency."""
-    from data.business_config import get_price_eur, get_price_pln
-
-    if currency == "EUR":
-        return get_price_eur(doc_code)
-    return get_price_pln(doc_code)
+    return _loader.get_price(doc_code, currency)
 
 
 def _delivery_price(currency: str) -> int:
     return DELIVERY_PRICE_EUR if currency == "EUR" else DELIVERY_PRICE_PLN
-
-
-async def _generate_order_id() -> str:
-    """Generate a unique order ID with collision checking.
-
-    Format: ORDER_YYYYMMDD_XXXX (date + 4 random hex chars).
-    """
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
-    max_attempts = 5
-    for _ in range(max_attempts):
-        suffix = secrets.token_hex(2).upper()
-        order_id = f"ORDER_{today}_{suffix}"
-
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(select(Order).where(Order.order_id == order_id))
-            if result.scalar_one_or_none() is None:
-                return order_id
-
-    suffix = secrets.token_hex(4).upper()
-    return f"ORDER_{today}_{suffix}"
-
-
-async def get_user_session(user_id: int) -> Dict[str, Any]:
-    """Return the user session, creating a new one if necessary.
-
-    Args:
-        user_id: Telegram user ID.
-
-    Returns:
-        Session dictionary.
-    """
-    async with _sessions_lock:
-        if user_id not in user_sessions:
-            user_sessions[user_id] = {
-                "cart": [],
-                "current_doc_type": None,
-                "current_template": None,
-                "current_quantity": 0,
-                "current_items": [],
-                "temp_item_data": {},
-                "current_field_index": 0,
-                "current_item_index": 0,
-                "delivery": None,
-                "payment_method": None,
-                "total_price": 0,
-                "currency": DEFAULT_CURRENCY,
-            }
-        return user_sessions[user_id]
 
 
 def _doc_name(template: Dict[str, Any], language: str) -> str:
@@ -139,6 +91,8 @@ def calculate_total_price(session: Dict[str, Any]) -> int:
 
     return total
 
+
+# ── Document field handlers ──────────────────────────────────────────
 
 @router.message(OrderState.choosing_document)
 async def fallback_choosing_document(message: Message, state: FSMContext):
@@ -988,3 +942,51 @@ async def callback_checkout(callback: CallbackQuery, state: FSMContext):
 
     await state.set_state(OrderState.choosing_payment)
     await callback.answer()
+
+
+async def _generate_order_id() -> str:
+    """Generate a unique order ID with collision checking.
+
+    Format: ORDER_YYYYMMDD_XXXX (date + 4 random hex chars).
+    """
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+    max_attempts = 5
+    for _ in range(max_attempts):
+        suffix = secrets.token_hex(2).upper()
+        order_id = f"ORDER_{today}_{suffix}"
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(Order).where(Order.order_id == order_id))
+            if result.scalar_one_or_none() is None:
+                return order_id
+
+    suffix = secrets.token_hex(4).upper()
+    return f"ORDER_{today}_{suffix}"
+
+
+async def get_user_session(user_id: int) -> Dict[str, Any]:
+    """Return the user session, creating a new one if necessary.
+
+    Args:
+        user_id: Telegram user ID.
+
+    Returns:
+        Session dictionary.
+    """
+    async with _sessions_lock:
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {
+                "cart": [],
+                "current_doc_type": None,
+                "current_template": None,
+                "current_quantity": 0,
+                "current_items": [],
+                "temp_item_data": {},
+                "current_field_index": 0,
+                "current_item_index": 0,
+                "delivery": None,
+                "payment_method": None,
+                "total_price": 0,
+                "currency": DEFAULT_CURRENCY,
+            }
+        return user_sessions[user_id]
