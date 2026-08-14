@@ -72,9 +72,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         if: always() && github.ref == 'refs/heads/main'
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
           publish_branch: gh-pages
-          publish_dir: allure-report
           keep_files: true  # Сохранять историю отчетов
-          user_name: github-actions
-          user_email: github-actions@github.com
-          deploy_key: ${{ secrets.ALLURE_DEPLOY_KEY }}
