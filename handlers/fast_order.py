@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InaccessibleMessage, Message
 
 from config import ROUTING
+from config.loader import get_loader
 from fsm.states import OrderState
 from utils.i18n import get_i18n, user_language
 

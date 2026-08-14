@@ -53,9 +53,9 @@ class TestValidateConfig:
         """Verify validate_config fails when BOT_TOKEN is missing."""
         from config import validate_config
 
-        with patch("config.BOT_TOKEN", None):
-            with patch("config.ADMIN_USERNAME", "admin"):
-                with patch("config.ROUTING", {"default": 123}):
+        with patch("config_runtime.BOT_TOKEN", None):
+            with patch("config_runtime.ADMIN_USERNAME", "admin"):
+                with patch("config_runtime.ROUTING", {"default": 123}):
                     with pytest.raises(SystemExit):
                         validate_config()
 
@@ -63,9 +63,9 @@ class TestValidateConfig:
         """Verify validate_config fails when BOT_TOKEN is a placeholder."""
         from config import validate_config
 
-        with patch("config.BOT_TOKEN", "your_bot_token_here"):
-            with patch("config.ADMIN_USERNAME", "admin"):
-                with patch("config.ROUTING", {"default": 123}):
+        with patch("config_runtime.BOT_TOKEN", "your_bot_token_here"):
+            with patch("config_runtime.ADMIN_USERNAME", "admin"):
+                with patch("config_runtime.ROUTING", {"default": 123}):
                     with pytest.raises(SystemExit):
                         validate_config()
 
@@ -73,9 +73,9 @@ class TestValidateConfig:
         """Verify validate_config fails when ADMIN_USERNAME is missing."""
         from config import validate_config
 
-        with patch("config.BOT_TOKEN", "123456789:token"):
-            with patch("config.ADMIN_USERNAME", None):
-                with patch("config.ROUTING", {"default": 123}):
+        with patch("config_runtime.BOT_TOKEN", "123456789:token"):
+            with patch("config_runtime.ADMIN_USERNAME", None):
+                with patch("config_runtime.ROUTING", {"default": 123}):
                     with pytest.raises(SystemExit):
                         validate_config()
 
@@ -83,10 +83,12 @@ class TestValidateConfig:
         """Verify validate_config fails when routing chat IDs are missing."""
         from config import validate_config
 
-        with patch("config.BOT_TOKEN", "123456789:token"):
-            with patch("config.ADMIN_USERNAME", "admin"):
-                with patch("config.ROUTING", {}):
-                    with patch("config.ROUTING_KEYS", {"visa": "ROUTING_VISA"}):
+        with patch("config_runtime.BOT_TOKEN", "123456789:token"):
+            with patch("config_runtime.ADMIN_USERNAME", "admin"):
+                with patch("config_runtime.ROUTING", {}):
+                    with patch(
+                        "config_runtime.ROUTING_KEYS", {"visa": "ROUTING_VISA"}
+                    ):
                         # Mock to simulate missing ROUTING['visa']
                         with pytest.raises(SystemExit):
                             validate_config()
@@ -95,10 +97,12 @@ class TestValidateConfig:
         """Verify validate_config passes with all required values."""
         from config import validate_config
 
-        with patch("config.BOT_TOKEN", "123456789:token"):
-            with patch("config.ADMIN_USERNAME", "admin"):
-                with patch("config.ROUTING", {"default": 123}):
-                    with patch("config.ROUTING_KEYS", {}):
-                        with patch("config.DATABASE_URL", "sqlite:///test.db"):
+        with patch("config_runtime.BOT_TOKEN", "123456789:token"):
+            with patch("config_runtime.ADMIN_USERNAME", "admin"):
+                with patch("config_runtime.ROUTING", {"default": 123}):
+                    with patch("config_runtime.ROUTING_KEYS", {}):
+                        with patch(
+                            "config_runtime.DATABASE_URL", "sqlite:///test.db"
+                        ):
                             # Should not raise
                             validate_config()
