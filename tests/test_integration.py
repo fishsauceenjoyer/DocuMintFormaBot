@@ -13,7 +13,12 @@ together correctly.
 import json
 
 import pytest
-from conftest import MockBot, MockCallback, MockFSMContext, MockMessage
+from conftest import (  # type: ignore[attr-defined]
+    MockBot,
+    MockCallback,
+    MockFSMContext,
+    MockMessage,
+)
 from sqlalchemy import select
 
 from fsm.states import OrderState
