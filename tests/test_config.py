@@ -86,9 +86,7 @@ class TestValidateConfig:
         with patch("config_runtime.BOT_TOKEN", "123456789:token"):
             with patch("config_runtime.ADMIN_USERNAME", "admin"):
                 with patch("config_runtime.ROUTING", {}):
-                    with patch(
-                        "config_runtime.ROUTING_KEYS", {"visa": "ROUTING_VISA"}
-                    ):
+                    with patch("config_runtime.ROUTING_KEYS", {"visa": "ROUTING_VISA"}):
                         # Mock to simulate missing ROUTING['visa']
                         with pytest.raises(SystemExit):
                             validate_config()
@@ -101,8 +99,6 @@ class TestValidateConfig:
             with patch("config_runtime.ADMIN_USERNAME", "admin"):
                 with patch("config_runtime.ROUTING", {"default": 123}):
                     with patch("config_runtime.ROUTING_KEYS", {}):
-                        with patch(
-                            "config_runtime.DATABASE_URL", "sqlite:///test.db"
-                        ):
+                        with patch("config_runtime.DATABASE_URL", "sqlite:///test.db"):
                             # Should not raise
                             validate_config()
