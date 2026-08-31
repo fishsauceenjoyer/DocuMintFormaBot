@@ -9,120 +9,13 @@
 #   - limits: order constraints
 #
 # Edit this file to add/remove services without touching Python code.
+#
+# ⚠️  PD NOTE (Epic 1): all services that collected personal data
+# (visa, passport, criminal_record_check, apostille — passport numbers,
+# birth dates, residential addresses) were removed. Only the demo
+# poster services remain.
 
 services:
-  - id: visa
-    name:
-      ru: "🗺 Визовая анкета"
-      en: "🗺 Visa application"
-      uk: "🗺 Візова анкета"
-    price:
-      base: 35
-      pln: 150
-      currency: EUR
-    fields:
-      - id: full_name
-        prompt: "👤 ФИО (как в паспорте)"
-        type: text
-        max_length: 255
-      - id: birth_date
-        prompt: "🎂 Дата рождения (ДД.ММ.ГГГГ)"
-        type: date
-      - id: passport_number
-        prompt: "🛂 Номер паспорта (серия и номер)"
-        type: passport_number
-        max_length: 30
-      - id: destination_country
-        prompt: "🌍 Страна назначения (код страны, например PL, RU, RS, AM)"
-        type: country_code
-        max_length: 2
-      - id: purpose
-        prompt: "✈️ Цель визита (туризм / бизнес / учёба / другое)"
-        type: text
-        max_length: 255
-    limits:
-      max_per_order: 5
-
-  - id: passport
-    name:
-      ru: "🛂 Загранпаспорт"
-      en: "🛂 Foreign passport"
-      uk: "🛂 Загранпаспорт"
-    price:
-      base: 45
-      pln: 200
-      currency: EUR
-    fields:
-      - id: full_name
-        prompt: "👤 ФИО"
-        type: text
-        max_length: 255
-      - id: birth_date
-        prompt: "🎂 Дата рождения (ДД.ММ.ГГГГ)"
-        type: date
-      - id: birth_place
-        prompt: "📍 Место рождения"
-        type: text
-        max_length: 255
-      - id: address
-        prompt: "🏠 Адрес проживания"
-        type: text
-        max_length: 255
-    limits:
-      max_per_order: 5
-
-  - id: criminal_record_check
-    name:
-      ru: "📜 Справка о несудимости"
-      en: "📜 Criminal record check"
-      uk: "📜 Довідка про несудимість"
-    price:
-      base: 25
-      pln: 100
-      currency: EUR
-    fields:
-      - id: full_name
-        prompt: "👤 ФИО"
-        type: text
-        max_length: 255
-      - id: birth_date
-        prompt: "🎂 Дата рождения (ДД.ММ.ГГГГ)"
-        type: date
-      - id: birth_place
-        prompt: "📍 Место рождения"
-        type: text
-        max_length: 255
-    limits:
-      max_per_order: 5
-
-  - id: apostille
-    name:
-      ru: "📑 Апостиль"
-      en: "📑 Apostille"
-      uk: "📑 Апостиль"
-    price:
-      base: 30
-      pln: 120
-      currency: EUR
-    fields:
-      - id: full_name
-        prompt: "👤 ФИО"
-        type: text
-        max_length: 255
-      - id: document_type
-        prompt: "📄 Тип документа для апостиля"
-        type: text
-        max_length: 255
-      - id: issue_date
-        prompt: "📅 Дата выдачи (ДД.ММ.ГГГГ)"
-        type: date
-      - id: issuing_authority
-        prompt: "🏛 Орган, выдавший документ"
-        type: text
-        max_length: 255
-    limits:
-      max_per_order: 5
-
   # ── Demo poster services (from business_config_demo.py) ──────────
   - id: poster_terminator1
     name:
