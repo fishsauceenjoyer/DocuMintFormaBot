@@ -40,16 +40,12 @@ class Field:
 
     def type_hint(self) -> str:
         """Return a short type/length hint shown to the user under the prompt."""
-        from data.business_config import ALLOWED_COUNTRIES_HINT
-
         hints = {
             "text": f"текст, макс. {self.max_length or 255} символов",
             "date": "дата в формате ДД.ММ.ГГГГ (год 1900-текущий)",
             "email": "email, макс. 255 символов",
             "phone": "телефон, макс. 20 символов",
             "optional_text": f"текст, макс. {self.max_length or 255} символов, необязательно",
-            "passport_number": "буквы A-Z, цифры 0-9, дефис, точка, слеш. Длина 3-30",
-            "country_code": f"код страны (2 буквы). Допустимые: {ALLOWED_COUNTRIES_HINT}",
         }
         if self.type == "choice":
             options = ", ".join(self.choices) if self.choices else "—"

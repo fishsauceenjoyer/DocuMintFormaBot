@@ -120,13 +120,11 @@ def _get_config():
         from data.business_config import (
             ALLOWED_COUNTRIES_HINT,
             DESTINATION_COUNTRIES,
-            PASSPORT_NUMBER_PATTERN,
         )
 
         _imported_config = {
             "DESTINATION_COUNTRIES": DESTINATION_COUNTRIES,
             "ALLOWED_COUNTRIES_HINT": ALLOWED_COUNTRIES_HINT,
-            "PASSPORT_NUMBER_PATTERN": PASSPORT_NUMBER_PATTERN,
         }
     return _imported_config
 
@@ -295,36 +293,6 @@ def validate_field_value(
                 error_message="❌ Неверный формат телефона. Используйте +XXXXXXXXXXX.",
                 sanitized_value=cleaned,
             )
-
-    elif field_type == "passport_number":
-        cfg = _get_config()
-        pattern = re.compile(cfg["PASSPORT_NUMBER_PATTERN"])
-        if not pattern.match(cleaned.upper()):
-            return ValidationResult(
-                is_valid=False,
-                error_message=(
-                    "❌ Неверный формат номера паспорта. "
-                    "Допустимы: буквы A-Z, цифры 0-9, пробел, дефис, точка, слеш. "
-                    "Длина от 3 до 30 символов."
-                ),
-                sanitized_value=cleaned.upper(),
-            )
-        cleaned = cleaned.upper()
-
-    elif field_type == "country_code":
-        cfg = _get_config()
-        allowed = cfg["DESTINATION_COUNTRIES"]
-        code = cleaned.upper()
-        if len(code) != 2 or code not in allowed:
-            hint = cfg["ALLOWED_COUNTRIES_HINT"]
-            return ValidationResult(
-                is_valid=False,
-                error_message=(
-                    f"❌ Неверный код страны. " f"Допустимые страны: {hint}"
-                ),
-                sanitized_value=code,
-            )
-        cleaned = code
 
     elif field_type == "choice":
         if not choices:

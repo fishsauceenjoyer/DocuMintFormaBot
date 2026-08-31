@@ -51,8 +51,6 @@ class FieldConfig(BaseModel):
             "email",
             "phone",
             "optional_text",
-            "passport_number",
-            "country_code",
             "choice",
             "integer",
         }
