@@ -119,9 +119,7 @@ def main() -> None:
         for keyword in sorted(hits):
             occurrences = hits[keyword]
             total_hits += len(occurrences)
-            report.append(
-                f"### Ключевое слово: `{keyword}` ({len(occurrences)} совпадений)"
-            )
+            report.append(f"### Ключевое слово: `{keyword}` ({len(occurrences)} совпадений)")
             report.append("")
             for line_no, line_text in occurrences[:50]:
                 truncated = line_text[:160] + ("…" if len(line_text) > 160 else "")
@@ -139,9 +137,7 @@ def main() -> None:
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text("\n".join(report), encoding="utf-8")
     print(f"Report written to {REPORT_PATH}")
-    print(
-        f"Files scanned: {len(files)}, files with hits: {files_with_hits}, total hits: {total_hits}"
-    )
+    print(f"Files scanned: {len(files)}, files with hits: {files_with_hits}, total hits: {total_hits}")
 
 
 if __name__ == "__main__":
