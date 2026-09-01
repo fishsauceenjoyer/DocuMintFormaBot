@@ -1,18 +1,19 @@
 """
-Original business configuration — reference file.
+Original business configuration — reference file (PD-clean).
 
-This file contains the **original** business data (sanepid, BHP, PESEL, psychotests,
-etc.) that was replaced by the demo "consular services" config.
+⚠️  PD NOTE (Epic 1): this file previously contained the **original**
+business data (sanepid, BHP, PESEL, psychotests) that collected personal
+data — passport/PESEL numbers, birth dates, residential addresses.
+All such documents were removed; only the demo poster configuration
+(which collects no personal data) is kept as a frozen reference.
 
-To switch back to the original configuration:
+To switch to this configuration:
 1. Rename this file to ``business_config.py`` (or update the import in
    ``templates/documents.py`` to point here instead).
-2. Update ``.env`` variable names (ROUTING_VISA → ROUTING_SANEPID etc.)
-   and chat IDs accordingly.
+2. Update ``.env`` variable names and chat IDs accordingly.
 3. Reset ``locales/`` if needed.
 
-⚠️  This file is **not imported** by default — it exists as a reference
-   so you can restore the original data at any time.
+This file is **not imported** by default — it exists as a reference.
 """
 
 from typing import Any, Dict, List
@@ -21,89 +22,55 @@ from templates.fields import Field
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Document types  (original — sanepid, BHP, psychotests, PESEL)
+# Document types (demo posters only — no personal data)
 # ──────────────────────────────────────────────────────────────────────
 
 DOCUMENT_TEMPLATES: Dict[str, Dict[str, Any]] = {
-    "sanepid": {
-        "name_ru": "📑 Санэпид / СК",
-        "name_uk": "📑 Санэпід / СК",
-        "name_en": "📑 Sanepid / Health certificate",
-        "price_pln": 150,
-        "price_eur": 35,
+    "poster_terminator1": {
+        "name_ru": "🎬 Терминатор 1",
+        "name_uk": "🎬 Термінатор 1",
+        "name_en": "🎬 Terminator 1",
+        "price_pln": 40,
+        "price_eur": 10,
         "fields": [
-            Field("date", "📅 Дата изготовления (не выходной/праздник)", "date"),
-            Field("full_name", "👤 Фамилия и имя как в загранпаспорте", "text"),
-            Field("birth_date", "🎂 Дата рождения (ДД.ММ.ГГГГ)", "date"),
-            Field("pesel", "🆔 PESEL или серия/номер паспорта", "text"),
-            Field(
-                "address",
-                "🏠 Полный адрес проживания (индекс, город, улица, квартира)",
-                "text",
-            ),
-            Field(
-                "workplace",
-                "🏢 Место работы (если нет - поставьте '-')",
-                "optional_text",
-                optional=True,
-            ),
-            Field(
-                "position",
-                "💼 Должность (если нет - поставьте '-')",
-                "optional_text",
-                optional=True,
-            ),
-        ],
-        "example": (
-            "02.01.2025\nOlena Romenko\n18.11.1996\nFB363261\n"
-            "Kraków, 89-510, ul. Senkiewicza 1/12\nROXI SP.Z O.O.\nSprzedawca"
-        ),
-    },
-    "bhp": {
-        "name_ru": "⛑ BHP",
-        "name_uk": "⛑ BHP",
-        "name_en": "⛑ BHP / Occupational safety",
-        "price_pln": 100,
-        "price_eur": 25,
-        "fields": [
-            Field("full_name", "👤 ФИО", "text"),
-            Field("pesel", "🆔 PESEL", "text"),
-            Field("position", "💼 Должность", "text"),
+            Field("size", "📐 Выберите размер постера", "choice"),
+            Field("color", "🎨 Выберите цветность", "choice"),
+            Field("quantity", "🔢 Количество экземпляров (1–5)", "integer"),
         ],
     },
-    "psychotests": {
-        "name_ru": "🚕 Психотесты для водителей",
-        "name_uk": "🚕 Психотести для водіїв",
-        "name_en": "🚕 Psychotests for drivers",
-        "price_pln": 120,
-        "price_eur": 30,
+    "poster_terminator2": {
+        "name_ru": "🎬 Терминатор 2",
+        "name_uk": "🎬 Термінатор 2",
+        "name_en": "🎬 Terminator 2",
+        "price_pln": 60,
+        "price_eur": 15,
         "fields": [
-            Field("full_name", "👤 ФИО водителя", "text"),
-            Field("license_number", "📘 Номер удостоверения", "text"),
+            Field("size", "📐 Выберите размер постера", "choice"),
+            Field("color", "🎨 Выберите цветность", "choice"),
+            Field("quantity", "🔢 Количество экземпляров (1–5)", "integer"),
         ],
     },
-    "pesel": {
-        "name_ru": "🧧 PESEL без присутствия",
-        "name_uk": "🧧 PESEL без присутності",
-        "name_en": "🧧 PESEL without presence",
-        "price_pln": 200,
-        "price_eur": 45,
+    "poster_predator": {
+        "name_ru": "🎬 Хищник",
+        "name_uk": "🎬 Хижак",
+        "name_en": "🎬 Predator",
+        "price_pln": 80,
+        "price_eur": 20,
         "fields": [
-            Field("full_name", "👤 ФИО", "text"),
-            Field("birth_date", "🎂 Дата рождения", "date"),
-            Field("parents_names", "👪 Имена родителей", "text"),
+            Field("size", "📐 Выберите размер постера", "choice"),
+            Field("color", "🎨 Выберите цветность", "choice"),
+            Field("quantity", "🔢 Количество экземпляров (1–5)", "integer"),
         ],
     },
 }
 
 # ──────────────────────────────────────────────────────────────────────
-# Routing keys (original)
+# Routing keys (demo)
 # ──────────────────────────────────────────────────────────────────────
 ROUTING_KEYS: Dict[str, str] = {
-    "sanepid": "ROUTING_SANEPID",
-    "bhp": "ROUTING_BHP",
-    "psychotests": "ROUTING_PSYCHOTESTS",
-    "pesel": "ROUTING_PESEL",
+    "poster_terminator1": "ROUTING_POSTER_TERMINATOR1",
+    "poster_terminator2": "ROUTING_POSTER_TERMINATOR2",
+    "poster_predator": "ROUTING_POSTER_PREDATOR",
 }
 
 # ──────────────────────────────────────────────────────────────────────

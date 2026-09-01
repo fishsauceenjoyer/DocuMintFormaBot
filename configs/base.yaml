@@ -3,7 +3,11 @@
 # ============================================
 # This file contains the general business structure:
 # version, currencies, delivery prices, payment details,
-# allowed countries, passport pattern, and routing keys.
+# and allowed countries.
+#
+# ⚠️  PD NOTE (Epic 1): the passport number pattern and the
+# visa/passport/criminal-record/apostille routing keys were removed
+# together with the personal-data services.
 #
 # Edit this file to change business-wide settings without
 # touching Python code.
@@ -52,12 +56,6 @@ countries:
     ru: "Армения"
     uk: "Вірменія"
 
-# ── Passport number format (regex) ────────────
-passport_number_pattern: "^[A-Z0-9\\s\\-\\.\\/]{3,30}$"
-
 # ── Routing keys (document code → env var) ────
-routing_keys:
-  visa: "ROUTING_VISA"
-  passport: "ROUTING_PASSPORT"
-  criminal_record_check: "ROUTING_CRIMINAL_RECORD"
-  apostille: "ROUTING_APOSTILLE"
+# Empty since Epic 1: no PD-collecting services remain.
+routing_keys: {}

@@ -96,7 +96,7 @@ class DocumentType(Base):
     used in :mod:`data.business_config`.
 
     Attributes:
-        code: Unique type code (e.g. ``"visa"``, ``"passport"``).
+        code: Unique type code (e.g. ``"poster_terminator1"``).
         name_uk / name_ru / name_en: Display names.
         price: Unit price in PLN.
         target_chat_id: Manager chat ID for this document type.

@@ -47,16 +47,6 @@ DESTINATION_COUNTRIES: List[str] = list(COUNTRY_CODES.keys())
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Passport number format (regex)
-# ──────────────────────────────────────────────────────────────────────────
-PASSPORT_NUMBER_PATTERN: str = (
-    _loader.base.passport_number_pattern
-    if _loader.base
-    else r"^[A-Z0-9\s\-\.\/]{3,30}$"
-)
-
-
-# ──────────────────────────────────────────────────────────────────────────
 # Currencies
 # ──────────────────────────────────────────────────────────────────────────
 SUPPORTED_CURRENCIES: List[str] = (
