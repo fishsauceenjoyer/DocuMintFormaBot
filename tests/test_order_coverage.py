@@ -39,7 +39,11 @@ class TestProcessPaymentProof:
 
         session = await get_user_session(123)
         session["cart"] = [
-            {"type": "visa", "quantity": 1, "items": [{"full_name": "John Doe"}]}
+            {
+                "type": "poster_terminator1",
+                "quantity": 1,
+                "items": [{"size": "John Doe"}],
+            }
         ]
         session["payment_method"] = "blik"
         session["total_price"] = 35
@@ -116,7 +120,7 @@ class TestProcessPaymentProof:
         from handlers.order import get_user_session, process_payment_proof
 
         session = await get_user_session(123)
-        session["cart"] = [{"type": "visa", "quantity": 1, "items": []}]
+        session["cart"] = [{"type": "poster_terminator1", "quantity": 1, "items": []}]
         session["payment_method"] = "blik"
         session["total_price"] = 35
 
@@ -154,7 +158,7 @@ class TestProcessPaymentProof:
         from handlers.order import get_user_session, process_payment_proof
 
         session = await get_user_session(123)
-        session["cart"] = [{"type": "visa", "quantity": 1, "items": []}]
+        session["cart"] = [{"type": "poster_terminator1", "quantity": 1, "items": []}]
         # No payment method set
 
         message = MockMessage(chat_id=123, user_id=123)
@@ -237,7 +241,7 @@ class TestProcessPaymentProof:
         assert call_kwargs["payment_method"] == "blik"
         assert call_kwargs["payment_proof_file_id"] == "photo.jpg"
         assert len(call_kwargs["documents"]) == 1
-        assert call_kwargs["documents"][0]["type"] == "visa"
+        assert call_kwargs["documents"][0]["type"] == "poster_terminator1"
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -265,7 +269,7 @@ class TestProcessDocumentField:
         session["current_template"] = {
             "fields": [
                 MagicMock(
-                    id="full_name",
+                    id="size",
                     prompt="Full Name",
                     type="text",
                     optional=False,
@@ -273,7 +277,7 @@ class TestProcessDocumentField:
                     type_hint=lambda: "text, max 255",
                 ),
                 MagicMock(
-                    id="birth_date",
+                    id="color",
                     prompt="Birth Date",
                     type="date",
                     optional=False,
@@ -289,12 +293,12 @@ class TestProcessDocumentField:
                     type_hint=lambda: "optional",
                 ),
             ],
-            "code": "visa",
+            "code": "poster_terminator1",
         }
         # Ensure Field objects behave like the real ones
         for f in session["current_template"]["fields"]:
             f.__class__.__module__ = "templates.fields"
-        session["current_doc_type"] = "visa"
+        session["current_doc_type"] = "poster_terminator1"
         session["current_quantity"] = 1
         session["current_items"] = []
         session["temp_item_data"] = {}
@@ -308,14 +312,14 @@ class TestProcessDocumentField:
         """Verify valid text input is accepted and stored."""
         from handlers.order import get_user_session, process_document_field
 
-        message = MockMessage(text="John Doe", chat_id=123, user_id=123)
+        message = MockMessage(text="A4", chat_id=123, user_id=123)
         message.bot = MockBot()
         state = MockFSMContext()
 
         await process_document_field(message, state)
 
         session = await get_user_session(123)
-        assert session["temp_item_data"].get("full_name") == "John Doe"
+        assert session["temp_item_data"].get("size") == "A4"
         assert session["current_field_index"] == 1  # Moved to next field
 
     @pytest.mark.asyncio
@@ -392,11 +396,11 @@ class TestProcessDocumentField:
         assert mock_notify.called, "Admin must be notified of validation error"
         # Verify notification has correct data
         notify_kwargs = mock_notify.call_args[1]
-        assert notify_kwargs["field_name"] == "full_name"
+        assert notify_kwargs["field_name"] == "size"
         assert notify_kwargs["field_type"] == "text"
         # Field must NOT be stored
         session = await get_user_session(123)
-        assert "full_name" not in session["temp_item_data"]
+        assert "size" not in session["temp_item_data"]
 
     @pytest.mark.asyncio
     async def test_handles_missing_template(self, clean_user_sessions):
@@ -451,7 +455,7 @@ class TestSaveDelivery:
         from handlers.order import get_user_session
 
         session = await get_user_session(123)
-        session["cart"] = [{"type": "visa", "quantity": 1, "items": []}]
+        session["cart"] = [{"type": "poster_terminator1", "quantity": 1, "items": []}]
         session["currency"] = "EUR"
         return session
 
@@ -634,7 +638,7 @@ class TestNotifyAdminValidationError:
             await _notify_admin_validation_error(
                 message=message,
                 user_id=123,
-                field_name="full_name",
+                field_name="size",
                 field_type="text",
                 raw_value="<script>alert(1)</script>",
                 error_message="Invalid characters detected",
@@ -643,7 +647,7 @@ class TestNotifyAdminValidationError:
         # Verify bot sent message to admin
         assert len(message.bot.sent_messages) > 0
         sent_text = message.bot.sent_messages[0]["text"]
-        assert "full_name" in sent_text
+        assert "size" in sent_text
         assert "Invalid characters" in sent_text
 
     @pytest.mark.asyncio

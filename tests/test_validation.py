@@ -310,84 +310,9 @@ class TestValidateFieldValue:
         result = validate_field_value("{$in: [1,2,3]}", "text", field_name="test")
         assert result.is_valid is False
 
-    def test_valid_passport_number(self):
-        result = validate_field_value(
-            "FB363261", "passport_number", field_name="passport_number"
-        )
-        assert result.is_valid is True
-        assert result.sanitized_value == "FB363261"
-
-    def test_passport_number_with_allowed_chars(self):
-        result = validate_field_value(
-            "AB-123.45 / 678", "passport_number", field_name="passport_number"
-        )
-        assert result.is_valid is True
-        assert result.sanitized_value == "AB-123.45 / 678"
-
-    def test_passport_number_too_short(self):
-        result = validate_field_value(
-            "AB", "passport_number", field_name="passport_number"
-        )
-        assert result.is_valid is False
-        assert "от 3" in result.error_message
-
-    def test_passport_number_with_invalid_chars(self):
-        result = validate_field_value(
-            "AB@123", "passport_number", field_name="passport_number"
-        )
-        assert result.is_valid is False
-
-    def test_passport_number_uppercased(self):
-        result = validate_field_value(
-            "fb363261", "passport_number", field_name="passport_number"
-        )
-        assert result.is_valid is True
-        assert result.sanitized_value == "FB363261"
-
-    def test_valid_country_code_pl(self):
-        result = validate_field_value(
-            "PL", "country_code", field_name="destination_country"
-        )
-        assert result.is_valid is True
-        assert result.sanitized_value == "PL"
-
-    def test_valid_country_code_ru(self):
-        result = validate_field_value(
-            "RU", "country_code", field_name="destination_country"
-        )
-        assert result.is_valid is True
-
-    def test_valid_country_code_rs(self):
-        result = validate_field_value(
-            "RS", "country_code", field_name="destination_country"
-        )
-        assert result.is_valid is True
-
-    def test_valid_country_code_am(self):
-        result = validate_field_value(
-            "AM", "country_code", field_name="destination_country"
-        )
-        assert result.is_valid is True
-
-    def test_country_code_lowercase_normalized(self):
-        result = validate_field_value(
-            "pl", "country_code", field_name="destination_country"
-        )
-        assert result.is_valid is True
-        assert result.sanitized_value == "PL"
-
-    def test_country_code_invalid(self):
-        result = validate_field_value(
-            "XX", "country_code", field_name="destination_country"
-        )
-        assert result.is_valid is False
-        assert "Допустимые страны" in result.error_message
-
-    def test_country_code_wrong_length(self):
-        result = validate_field_value(
-            "POL", "country_code", field_name="destination_country"
-        )
-        assert result.is_valid is False
+    # NOTE (Epic 1): poster_terminator2_number and country_code field types were
+    # removed together with the personal-data services, so their
+    # validation tests were removed as well.
 
 
 # ── _get_default_max_length tests ────────────────────────────────────
@@ -440,17 +365,10 @@ class TestFieldConstructor:
         f = Field("phone", "Phone", "phone")
         assert f.type == "phone"
 
-    def test_passport_number_type_hint(self):
-        f = Field("passport", "Number", "passport_number")
+    def test_choice_type_hint(self):
+        f = Field("size", "Size", "choice", choices=["A4", "A3"])
         hint = f.type_hint()
-        assert "буквы" in hint
-        assert "A-Z" in hint
-
-    def test_country_code_type_hint(self):
-        f = Field("country", "Country", "country_code")
-        hint = f.type_hint()
-        assert "код страны" in hint
-        assert "PL" in hint or "RU" in hint
+        assert "A4" in hint
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -619,80 +537,6 @@ class TestPhoneEquivalenceClasses:
         assert expected_error in result.error_message
 
 
-class TestPassportNumberEquivalenceClasses:
-    """Equivalence classes and boundary values for ``passport_number`` fields."""
-
-    @pytest.mark.parametrize(
-        "value",
-        [
-            "FB363261",  # Standard
-            "AB-123.45 / 678",  # With allowed separators
-            "ABC",  # Min boundary (3 chars)
-            "A" * 30,  # Max boundary (30 chars)
-            "fb363261",  # Lowercase (normalized to upper)
-        ],
-        ids=[
-            "standard",
-            "with_separators",
-            "min_boundary",
-            "max_boundary",
-            "lowercase",
-        ],
-    )
-    def test_valid_passport_accepted(self, value):
-        result = validate_field_value(value, "passport_number", field_name="passport")
-        assert result.is_valid is True
-
-    @pytest.mark.parametrize(
-        "value,expected_error",
-        [
-            ("", "пустым"),  # Empty
-            ("AB", "от 3"),  # Too short (2 chars)
-            ("A" * 31, "от 3"),  # Too long (31 chars)
-            ("AB@123", "формат"),  # Invalid char
-        ],
-        ids=["empty", "too_short", "too_long", "invalid_char"],
-    )
-    def test_invalid_passport_rejected(self, value, expected_error):
-        result = validate_field_value(value, "passport_number", field_name="passport")
-        assert result.is_valid is False
-        assert expected_error in result.error_message
-
-
-class TestCountryCodeEquivalenceClasses:
-    """Equivalence classes and boundary values for ``country_code`` fields."""
-
-    @pytest.mark.parametrize(
-        "value",
-        [
-            "PL",  # Poland
-            "RU",  # Russia
-            "RS",  # Serbia
-            "AM",  # Armenia
-            "pl",  # Lowercase (normalized)
-        ],
-        ids=["pl", "ru", "rs", "am", "lowercase"],
-    )
-    def test_valid_country_code_accepted(self, value):
-        result = validate_field_value(value, "country_code", field_name="country")
-        assert result.is_valid is True
-
-    @pytest.mark.parametrize(
-        "value,expected_error",
-        [
-            ("", "пустым"),  # Empty
-            ("XX", "страны"),  # Not in allowed list
-            ("POL", "страны"),  # Wrong length (3 chars)
-            ("P", "страны"),  # Wrong length (1 char)
-        ],
-        ids=["empty", "not_allowed", "too_long", "too_short"],
-    )
-    def test_invalid_country_code_rejected(self, value, expected_error):
-        result = validate_field_value(value, "country_code", field_name="country")
-        assert result.is_valid is False
-        assert expected_error in result.error_message
-
-
 class TestQuantityBoundaryValues:
     """Boundary values for document quantity (1–5) at the FSM level."""
 
@@ -728,7 +572,7 @@ class TestQuantityBoundaryValues:
         from handlers.order import process_document_choice, process_quantity
 
         # Set up session by choosing a document first
-        cb_doc = MockCallback(data="doc_visa")
+        cb_doc = MockCallback(data="doc_poster_terminator1")
         await process_document_choice(cb_doc, mock_fsm)
 
         cb_qty = MockCallback(data=qty_data, user_id=123)

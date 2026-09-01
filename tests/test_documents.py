@@ -32,19 +32,19 @@ class TestGetAllTemplates:
             assert isinstance(code, str)
             assert isinstance(name, str)
 
-    def test_includes_visa(self):
-        """Verify 'visa' is in the list."""
+    def test_includes_poster_terminator1(self):
+        """Verify 'poster_terminator1' is in the list."""
         from templates.documents import get_all_templates
 
         codes = [code for code, _ in get_all_templates()]
-        assert "visa" in codes
+        assert "poster_terminator1" in codes
 
-    def test_includes_passport(self):
-        """Verify 'passport' is in the list."""
+    def test_includes_poster_terminator2(self):
+        """Verify 'poster_terminator2' is in the list."""
         from templates.documents import get_all_templates
 
         codes = [code for code, _ in get_all_templates()]
-        assert "passport" in codes
+        assert "poster_terminator2" in codes
 
     def test_names_are_translated(self):
         """Verify names contain English text or emoji."""
@@ -59,11 +59,11 @@ class TestGetAllTemplates:
 class TestGetTemplate:
     """Tests for get_template function."""
 
-    def test_returns_dict_for_visa(self):
-        """Verify get_template('visa') returns a dict with expected keys."""
+    def test_returns_dict_for_known_code(self):
+        """Verify get_template returns a dict with expected keys."""
         from templates.documents import get_template
 
-        template = get_template("visa")
+        template = get_template("poster_terminator1")
         assert template is not None
         assert isinstance(template, dict)
         # Templates use name_* keys, not 'code'
@@ -73,11 +73,11 @@ class TestGetTemplate:
         assert "price_eur" in template
         assert "price_pln" in template
 
-    def test_returns_dict_for_passport(self):
-        """Verify get_template('passport') returns a dict."""
+    def test_returns_dict_for_second_poster(self):
+        """Verify get_template returns a dict."""
         from templates.documents import get_template
 
-        template = get_template("passport")
+        template = get_template("poster_terminator2")
         assert template is not None
         assert "name_en" in template
         assert "fields" in template

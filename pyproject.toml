@@ -1,7 +1,7 @@
 [project]
 name = "documint-forma-bot"
 version = "1.0.0"
-description = "Telegram bot for document ordering (visa, passport, apostille)"
+description = "Telegram bot for poster printing and document ordering"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

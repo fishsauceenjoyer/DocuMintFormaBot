@@ -1,15 +1,11 @@
 """Tests for data/business_config.py.
 
 Verifies:
-    - Constants are correct (countries, currencies, prices, patterns, etc.)
+    - Constants are correct (countries, currencies, prices, etc.)
     - Helper functions return expected values
     - YAML template loading works
     - Edge cases (unknown document codes, missing fields)
 """
-
-import re
-
-import pytest
 
 
 class TestConstants:
@@ -36,31 +32,16 @@ class TestConstants:
 
     def test_allowed_countries_hint_format(self):
         """Verify ALLOWED_COUNTRIES_HINT contains all country names."""
-        from data.business_config import (
-            ALLOWED_COUNTRIES_HINT,
-            COUNTRY_CODES,
-        )
+        from data.business_config import ALLOWED_COUNTRIES_HINT, COUNTRY_CODES
 
         for code, names in COUNTRY_CODES.items():
             assert names["en"] in ALLOWED_COUNTRIES_HINT
 
     def test_destination_countries_matches_country_codes(self):
         """Verify DESTINATION_COUNTRIES is derived from COUNTRY_CODES keys."""
-        from data.business_config import (
-            COUNTRY_CODES,
-            DESTINATION_COUNTRIES,
-        )
+        from data.business_config import COUNTRY_CODES, DESTINATION_COUNTRIES
 
         assert set(DESTINATION_COUNTRIES) == set(COUNTRY_CODES.keys())
-
-    def test_passport_number_pattern_is_string(self):
-        """Verify PASSPORT_NUMBER_PATTERN is a non-empty regex string."""
-        from data.business_config import PASSPORT_NUMBER_PATTERN
-
-        assert isinstance(PASSPORT_NUMBER_PATTERN, str)
-        assert len(PASSPORT_NUMBER_PATTERN) > 0
-        # Compile to verify it's a valid regex
-        re.compile(PASSPORT_NUMBER_PATTERN)
 
     def test_supported_currencies(self):
         """Verify SUPPORTED_CURRENCIES contains EUR and PLN only."""
@@ -90,16 +71,11 @@ class TestConstants:
             assert isinstance(value, str)
             assert len(value) > 0
 
-    def test_routing_keys(self):
-        """Verify ROUTING_KEYS has expected document types."""
+    def test_routing_keys_empty_after_pd_removal(self):
+        """Verify ROUTING_KEYS is empty since PD services were removed."""
         from data.business_config import ROUTING_KEYS
 
-        assert "visa" in ROUTING_KEYS
-        assert "passport" in ROUTING_KEYS
-        assert "apostille" in ROUTING_KEYS
-        for key, value in ROUTING_KEYS.items():
-            assert isinstance(value, str)
-            assert value.startswith("ROUTING_")
+        assert ROUTING_KEYS == {}
 
 
 class TestGetTemplate:
@@ -109,7 +85,7 @@ class TestGetTemplate:
         """Verify get_template returns a dict for a known document code."""
         from data.business_config import get_template
 
-        result = get_template("visa")
+        result = get_template("poster_terminator1")
         assert result is not None
         assert isinstance(result, dict)
 
@@ -124,7 +100,8 @@ class TestGetTemplate:
         """Verify template dict has name_ru, price_pln, fields, etc."""
         from data.business_config import get_template
 
-        template = get_template("visa")
+        template = get_template("poster_terminator1")
+        assert template is not None
         assert "name_ru" in template
         assert "name_uk" in template
         assert "name_en" in template
@@ -136,7 +113,8 @@ class TestGetTemplate:
         """Verify template fields is a list."""
         from data.business_config import get_template
 
-        template = get_template("visa")
+        template = get_template("poster_terminator1")
+        assert template is not None
         assert isinstance(template["fields"], list)
 
 
@@ -155,13 +133,14 @@ class TestGetAllTemplates:
             assert len(item) == 2
 
     def test_contains_known_documents(self):
-        """Verify known documents appear in get_all_templates."""
+        """Verify known poster templates appear in get_all_templates."""
         from data.business_config import get_all_templates
 
         result = get_all_templates()
         codes = [code for code, _ in result]
-        assert "visa" in codes
-        assert "passport" in codes
+        assert "poster_terminator1" in codes
+        assert "poster_terminator2" in codes
+        assert "poster_predator" in codes
 
 
 class TestGetPricePln:
@@ -171,7 +150,7 @@ class TestGetPricePln:
         """Verify get_price_pln returns a positive integer for known codes."""
         from data.business_config import get_price_pln
 
-        price = get_price_pln("visa")
+        price = get_price_pln("poster_terminator1")
         assert isinstance(price, int)
         assert price > 0
 
@@ -183,13 +162,13 @@ class TestGetPricePln:
         assert price == 0
 
     def test_specific_known_prices(self):
-        """Verify specific document prices match expected values."""
+        """Verify specific poster prices match expected values."""
         from data.business_config import get_price_pln
 
-        # These values come from config/templates.yaml
-        assert get_price_pln("visa") == 150
-        assert get_price_pln("passport") == 200
-        assert get_price_pln("apostille") == 120
+        # These values come from configs/services.yaml
+        assert get_price_pln("poster_terminator1") == 40
+        assert get_price_pln("poster_terminator2") == 60
+        assert get_price_pln("poster_predator") == 80
 
 
 class TestGetPriceEur:
@@ -199,7 +178,7 @@ class TestGetPriceEur:
         """Verify get_price_eur returns a positive integer for known codes."""
         from data.business_config import get_price_eur
 
-        price = get_price_eur("visa")
+        price = get_price_eur("poster_terminator1")
         assert isinstance(price, int)
         assert price > 0
 
@@ -211,41 +190,10 @@ class TestGetPriceEur:
         assert price == 0
 
     def test_specific_known_prices(self):
-        """Verify specific document prices match expected values."""
+        """Verify specific poster prices match expected values."""
         from data.business_config import get_price_eur
 
-        # These values come from config/templates.yaml
-        assert get_price_eur("visa") == 35
-        assert get_price_eur("passport") == 45
-        assert get_price_eur("apostille") == 30
-
-
-class TestPassportPattern:
-    """Tests for PASSPORT_NUMBER_PATTERN validation."""
-
-    def test_valid_passport_numbers(self):
-        """Verify valid passport numbers match the pattern."""
-        from data.business_config import PASSPORT_NUMBER_PATTERN
-
-        pattern = re.compile(PASSPORT_NUMBER_PATTERN)
-        valid_numbers = [
-            "AB1234567",
-            "123456789",
-            "ABC-123/45",
-        ]
-        for number in valid_numbers:
-            assert pattern.match(number), f"{number} should be valid"
-
-    def test_invalid_passport_numbers(self):
-        """Verify invalid passport numbers don't match the pattern."""
-        from data.business_config import PASSPORT_NUMBER_PATTERN
-
-        pattern = re.compile(PASSPORT_NUMBER_PATTERN)
-        invalid_numbers = [
-            "short",  # too short
-            "a" * 31,  # too long
-            "lowercase",  # lowercase not allowed
-            "invalid@char",  # special chars not allowed
-        ]
-        for number in invalid_numbers:
-            assert not pattern.match(number), f"{number} should be invalid"
+        # These values come from configs/services.yaml
+        assert get_price_eur("poster_terminator1") == 10
+        assert get_price_eur("poster_terminator2") == 15
+        assert get_price_eur("poster_predator") == 20

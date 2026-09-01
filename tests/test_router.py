@@ -33,7 +33,7 @@ def _order_data(order_id="ORDER_TEST"):
         "order_id": order_id,
         "documents": [
             {
-                "type": "visa",
+                "type": "poster_terminator1",
                 "quantity": 1,
                 "items": [{"full_name": "Test User"}],
             }
@@ -57,7 +57,7 @@ def clean_orders():
 async def test_send_order_to_manager_routes_message_and_stores_admin_metadata(
     monkeypatch,
 ):
-    monkeypatch.setattr(router, "ROUTING", {"visa": 111, "default": 999})
+    monkeypatch.setattr(router, "ROUTING", {"poster_terminator1": 111, "default": 999})
     bot = RecordingBot()
 
     target = await router.send_order_to_manager(
@@ -81,7 +81,7 @@ async def test_send_order_to_manager_routes_message_and_stores_admin_metadata(
 async def test_send_order_to_manager_keeps_order_metadata_when_telegram_fails(
     monkeypatch,
 ):
-    monkeypatch.setattr(router, "ROUTING", {"visa": 111, "default": 999})
+    monkeypatch.setattr(router, "ROUTING", {"poster_terminator1": 111, "default": 999})
 
     target = await router.send_order_to_manager(
         bot=FailingBot(),

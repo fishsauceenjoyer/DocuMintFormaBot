@@ -157,7 +157,7 @@ async def test_process_fast_order():
     Verifies the message is forwarded to the manager with
     "FAST ORDER" header and includes the user's text.
     """
-    message = MockMessage(text="Test order: passport", chat_id=123)
+    message = MockMessage(text="Test order: poster_terminator2", chat_id=123)
     state = MockFSMContext()
     state._data["state"] = OrderState.fast_order_waiting
 
@@ -167,5 +167,6 @@ async def test_process_fast_order():
         await process_fast_order(message, state)
 
     assert message.bot._mock_message_sent is not None
-    assert "FAST ORDER" in message.bot._mock_message_sent["text"]
-    assert "Test order: passport" in message.bot._mock_message_sent["text"]
+    sent_text = message.bot._mock_message_sent["text"].replace("\\", "")
+    assert "FAST ORDER" in sent_text
+    assert "Test order: poster_terminator2" in sent_text
