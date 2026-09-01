@@ -43,10 +43,10 @@ async def test_e2e_full_order_flow(clean_user_sessions, mock_order_db):
     assert await state.get_state() == OrderState.choosing_document
     assert msg._answered_text is not None
 
-    # ── Step 2: Choose document (visa) → entering_quantity ──────────
+    # ── Step 2: Choose document (poster_terminator1) → entering_quantity ──────────
     from handlers.order import get_user_session, process_document_choice
 
-    callback1 = MockCallback(data="doc_visa", user_id=user_id)
+    callback1 = MockCallback(data="doc_poster_terminator1", user_id=user_id)
     callback1.bot = MockBot()
     await process_document_choice(callback1, state)
 
@@ -76,18 +76,18 @@ async def test_e2e_full_order_flow(clean_user_sessions, mock_order_db):
     from templates.fields import Field
 
     session["current_template"] = {
-        "fields": [Field("full_name", "Full Name", "text")],
-        "code": "visa",
-        "name_en": "Visa application",
+        "fields": [Field("size", "Size", "choice", choices=["A4", "A3"])],
+        "code": "poster_terminator1",
+        "name_en": "Terminator 1",
     }
-    session["current_doc_type"] = "visa"
+    session["current_doc_type"] = "poster_terminator1"
     session["current_quantity"] = 1  # Single copy for simplicity
     session["current_items"] = []
     session["temp_item_data"] = {}
     session["current_field_index"] = 0
 
     # Fill field for the single copy
-    msg2 = MockMessage(text="John Doe", chat_id=user_id, user_id=user_id)
+    msg2 = MockMessage(text="A4", chat_id=user_id, user_id=user_id)
     msg2.bot = MockBot()
     await state.update_data(current_field_index=0)
     await process_document_field(msg2, state)
@@ -106,11 +106,11 @@ async def test_e2e_full_order_flow(clean_user_sessions, mock_order_db):
     await process_delivery_choice(callback3, state)
     assert await state.get_state() == OrderState.choosing_payment
 
-    # ── Step 6: Choose payment (blik) → waiting_for_payment_proof ───
+    # ── Step 6: Choose payment (blik) → waiting_for_payment_proof ────
     from handlers.order import process_payment
 
     session = await get_user_session(user_id)
-    session["total_price"] = 35  # 1 × visa(35€)
+    session["total_price"] = 10  # 1 × poster_terminator1 (10€)
     session["currency"] = "EUR"
 
     callback4 = MockCallback(data="pay_blik", user_id=user_id)
@@ -126,15 +126,15 @@ async def test_e2e_full_order_flow(clean_user_sessions, mock_order_db):
     session = await get_user_session(user_id)
     session["cart"] = [
         {
-            "type": "visa",
+            "type": "poster_terminator1",
             "quantity": 1,
             "items": [
-                {"full_name": "John Doe"},
+                {"size": "A4"},
             ],
         }
     ]
     session["payment_method"] = "blik"
-    session["total_price"] = 35
+    session["total_price"] = 10
 
     msg3 = MockMessage(chat_id=user_id, user_id=user_id)
     msg3.bot = MockBot()
@@ -158,7 +158,7 @@ async def test_e2e_full_order_flow(clean_user_sessions, mock_order_db):
     assert mock_create.called, "Order must be persisted"
     create_kwargs = mock_create.call_args[1]
     assert create_kwargs["status"] == "paid"
-    assert create_kwargs["total_price"] == 35
+    assert create_kwargs["total_price"] == 10
     assert create_kwargs["payment_method"] == "blik"
 
     # Manager must be notified

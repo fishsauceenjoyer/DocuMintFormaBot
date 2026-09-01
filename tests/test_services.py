@@ -31,13 +31,13 @@ class TestPricing:
         assert pricing.currency_symbol("PLN") == "zł"
 
     def test_document_price_eur(self):
-        # visa is one of the demo templates
-        price = pricing.document_price("EUR", "visa")
+        # poster_terminator1 is one of the demo templates
+        price = pricing.document_price("EUR", "poster_terminator1")
         assert isinstance(price, int)
         assert price > 0
 
     def test_document_price_pln(self):
-        price = pricing.document_price("PLN", "visa")
+        price = pricing.document_price("PLN", "poster_terminator1")
         assert isinstance(price, int)
         assert price > 0
 
@@ -48,16 +48,18 @@ class TestPricing:
         assert pricing.delivery_price("PLN") > 0
 
     def test_calculate_total_without_delivery(self):
-        items = [{"type": "visa", "quantity": 2}]
+        items = [{"type": "poster_terminator1", "quantity": 2}]
         total = pricing.calculate_total(items, delivery=None, currency="EUR")
-        assert total == pricing.document_price("EUR", "visa") * 2
+        assert total == pricing.document_price("EUR", "poster_terminator1") * 2
 
     def test_calculate_total_with_delivery(self):
-        items = [{"type": "visa", "quantity": 1}]
+        items = [{"type": "poster_terminator1", "quantity": 1}]
         total = pricing.calculate_total(
             items, delivery={"name": "Test"}, currency="EUR"
         )
-        expected = pricing.document_price("EUR", "visa") + pricing.delivery_price("EUR")
+        expected = pricing.document_price(
+            "EUR", "poster_terminator1"
+        ) + pricing.delivery_price("EUR")
         assert total == expected
 
     def test_calculate_total_empty_cart(self):
@@ -73,7 +75,11 @@ class TestOrderBuilder:
             "order_id": "ORDER_123456",
             "user": {"id": 123, "username": "testuser"},
             "documents": [
-                {"type": "visa", "quantity": 1, "items": [{"full_name": "John Doe"}]}
+                {
+                    "type": "poster_terminator1",
+                    "quantity": 1,
+                    "items": [{"full_name": "John Doe"}],
+                }
             ],
             "delivery": None,
             "total_price": 150,
@@ -92,7 +98,7 @@ class TestOrderBuilder:
             "user": {"id": 321, "username": None},
             "documents": [
                 {
-                    "type": "passport",
+                    "type": "poster_terminator2",
                     "quantity": 2,
                     "items": [{"first": "A", "second": "B"}],
                 }
@@ -132,11 +138,15 @@ class TestOrderManager:
                 "address": "Main 1",
             },
             "documents": [
-                {"type": "visa", "quantity": 1, "items": [{"full_name": "Bob"}]}
+                {
+                    "type": "poster_terminator1",
+                    "quantity": 1,
+                    "items": [{"full_name": "Bob"}],
+                }
             ],
             "items": [
                 {
-                    "type": "visa",
+                    "type": "poster_terminator1",
                     "quantity": 1,
                     "unit_price": 120,
                     "data": {"full_name": "Bob"},
