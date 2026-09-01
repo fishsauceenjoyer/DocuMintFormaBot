@@ -47,16 +47,6 @@ DESTINATION_COUNTRIES: List[str] = list(COUNTRY_CODES.keys())
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# demo_document number format (regex)
-# ──────────────────────────────────────────────────────────────────────────
-demo_document_ref_PATTERN: str = (
-    _loader.base.demo_document_ref_pattern
-    if _loader.base
-    else r"^[A-Z0-9\s\-\.\/]{3,30}$"
-)
-
-
-# ──────────────────────────────────────────────────────────────────────────
 # Currencies
 # ──────────────────────────────────────────────────────────────────────────
 SUPPORTED_CURRENCIES: List[str] = (

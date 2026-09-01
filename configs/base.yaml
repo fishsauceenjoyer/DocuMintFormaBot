@@ -3,7 +3,11 @@
 # ============================================
 # This file contains the general business structure:
 # version, currencies, delivery prices, payment details,
-# allowed countries, demo_document pattern, and routing keys.
+# and allowed countries.
+#
+# ⚠️  PD NOTE (Epic 1): the demo_document number pattern and the
+# demo_service/demo_document/demo_check/apostille routing keys were removed
+# together with the personal-data services.
 #
 # Edit this file to change business-wide settings without
 # touching Python code.
@@ -52,12 +56,6 @@ countries:
     ru: "Армения"
     uk: "Вірменія"
 
-# ── demo_document number format (regex) ────────────
-demo_document_ref_pattern: "^[A-Z0-9\\s\\-\\.\\/]{3,30}$"
-
 # ── Routing keys (document code → env var) ────
-routing_keys:
-  demo_service: "ROUTING_demo_service"
-  demo_document: "ROUTING_demo_document"
-  demo_check_check: "ROUTING_demo_check"
-  apostille: "ROUTING_APOSTILLE"
+# Empty since Epic 1: no PD-collecting services remain.
+routing_keys: {}

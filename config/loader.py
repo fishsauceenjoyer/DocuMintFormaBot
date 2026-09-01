@@ -51,8 +51,6 @@ class FieldConfig(BaseModel):
             "email",
             "phone",
             "optional_text",
-            "demo_document_ref",
-            "country_code",
             "choice",
             "integer",
         }
