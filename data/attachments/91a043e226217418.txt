@@ -1,0 +1,2 @@
+Configuration errors found:
+  - ROUTING_POSTER_TERMINATOR1 is not set in .env file

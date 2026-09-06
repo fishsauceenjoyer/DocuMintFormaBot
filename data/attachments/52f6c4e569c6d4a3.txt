@@ -1,0 +1,2 @@
+Configuration errors found:
+  - ADMIN_USERNAME is not set in .env file

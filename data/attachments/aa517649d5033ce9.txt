@@ -1,0 +1,2 @@
+Configuration errors found:
+  - BOT_TOKEN is still the placeholder value 'your_bot_token_here'. Replace it with a real token from @BotFather
