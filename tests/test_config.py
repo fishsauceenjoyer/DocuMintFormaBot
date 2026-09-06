@@ -86,8 +86,11 @@ class TestValidateConfig:
         with patch("config_runtime.BOT_TOKEN", "123456789:token"):
             with patch("config_runtime.ADMIN_USERNAME", "admin"):
                 with patch("config_runtime.ROUTING", {}):
-                    with patch("config_runtime.ROUTING_KEYS", {"visa": "ROUTING_VISA"}):
-                        # Mock to simulate missing ROUTING['visa']
+                    with patch(
+                        "config_runtime.ROUTING_KEYS",
+                        {"poster_terminator1": "ROUTING_POSTER_TERMINATOR1"},
+                    ):
+                        # Mock to simulate missing ROUTING['poster_terminator1']
                         with pytest.raises(SystemExit):
                             validate_config()
 

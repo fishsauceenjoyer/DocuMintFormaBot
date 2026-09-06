@@ -32,44 +32,48 @@ from tests.fixtures.mocks import MockFSMContext, MockMessage
 
 
 @pytest.mark.asyncio
-async def test_callback_document_choice_visa(mock_fsm, clean_user_sessions):
-    """Test selecting a "Visa application" document.
+async def test_callback_document_choice_poster_terminator1(
+    mock_fsm, clean_user_sessions
+):
+    """Test selecting a "Terminator 1" document.
 
     Verifies:
         - Message text contains the template name (English)
         - Message text contains the price (EUR)
         - FSM state is set to entering_quantity
     """
-    callback = MockCallback(data="doc_visa")
+    callback = MockCallback(data="doc_poster_terminator1")
 
     await process_document_choice(callback, mock_fsm)
 
     # Verify message was edited with template info
     edited_text = getattr(callback.message, "_edited_text", None)
     assert edited_text is not None
-    assert "Visa application" in edited_text
-    assert "35" in edited_text  # price (EUR)
+    assert "Terminator 1" in edited_text
+    assert "10" in edited_text  # price (EUR)
     assert "€" in edited_text
     # Verify state
     assert mock_fsm._data.get("state") == OrderState.entering_quantity
 
 
 @pytest.mark.asyncio
-async def test_callback_document_choice_passport(mock_fsm, clean_user_sessions):
-    """Test selecting a "Foreign passport" document.
+async def test_callback_document_choice_poster_terminator2(
+    mock_fsm, clean_user_sessions
+):
+    """Test selecting a "Terminator 2" document.
 
     Verifies correct loading of another document type.
     """
-    callback = MockCallback(data="doc_passport")
+    callback = MockCallback(data="doc_poster_terminator2")
 
     await process_document_choice(callback, mock_fsm)
 
     edited_text = getattr(callback.message, "_edited_text", None)
     assert edited_text is not None
-    # The English name is "Foreign passport"
-    assert "Foreign passport" in edited_text
-    # Passport price is 45 EUR
-    assert "45" in edited_text
+    # The English name is "Terminator 2"
+    assert "Terminator 2" in edited_text
+    # Terminator 2 price is 15 EUR
+    assert "15" in edited_text
     assert "€" in edited_text
     assert mock_fsm._data.get("state") == OrderState.entering_quantity
 
@@ -97,7 +101,7 @@ async def test_callback_quantity_selection(mock_fsm, clean_user_sessions):
         - User session is updated
     """
     # First make a document choice to set up the session
-    callback = MockCallback(data="doc_visa")
+    callback = MockCallback(data="doc_poster_terminator1")
     await process_document_choice(callback, mock_fsm)
 
     # Now select quantity (need a new callback since frozen model)
@@ -219,7 +223,7 @@ class TestAddMoreCart:
         state = mock_fsm
 
         with patch("templates.documents.get_all_templates") as mock_templates:
-            mock_templates.return_value = [("visa", "Visa")]
+            mock_templates.return_value = [("poster_terminator1", "Terminator 1")]
             with patch("keyboards.buttons.document_keyboard") as mock_kb:
                 mock_kb.return_value = MagicMock()
                 await callback_add_more(callback, state)
@@ -238,7 +242,9 @@ class TestClearCart:
 
         # Add an item to the cart
         session = await get_user_session(123)
-        session["cart"].append({"type": "visa", "quantity": 1, "items": []})
+        session["cart"].append(
+            {"type": "poster_terminator1", "quantity": 1, "items": []}
+        )
         session["delivery"] = {"name": "Test", "phone": "+48123456789"}
         session["total_price"] = 100
 

@@ -1,12 +1,12 @@
 # DocuMintFormaBot 🗺
 
-**Telegram bot for document ordering services** — a complete order-processing FSM
+**Telegram bot for poster printing services** — a complete order-processing FSM
 (Finite State Machine) with multi-language support, inline keyboards, cart
 management, delivery/payment options, and a manager/admin panel.
 
 > 🔍 This is a **demo** project. The business logic (document types, prices,
 > routing keys) lives in a single config file — drop in your own data to
-> repurpose the bot for any document-as-a-service scenario.
+> repurpose the bot for any print-on-demand scenario.
 
 ---
 

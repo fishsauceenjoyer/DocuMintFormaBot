@@ -39,7 +39,7 @@ class TestSQLInjection:
         item = await create_order_item(
             db=mock_db_session,
             order_id=order.id,
-            document_type="visa",
+            document_type="poster_terminator1",
             quantity=1,
             unit_price=100,
             data={"full_name": payload},
@@ -134,14 +134,16 @@ class TestMarkdownInjection:
                 return True
 
         orders.clear()
-        monkeypatch.setattr(router, "ROUTING", {"visa": 111, "default": 999})
+        monkeypatch.setattr(
+            router, "ROUTING", {"poster_terminator1": 111, "default": 999}
+        )
         bot = RecordingBot()
 
         order_data = {
             "order_id": "ORDER_SEC_MD",
             "documents": [
                 {
-                    "type": "visa",
+                    "type": "poster_terminator1",
                     "quantity": 1,
                     "items": [{"full_name": "[click](http://evil.com)"}],
                 }

@@ -97,19 +97,5 @@ def test_valid_text_cases_parametrized(value, expected_valid, expected_error_con
         assert expected_error_contains in result.error_message
 
 
-@pytest.mark.parametrize(
-    "country,expected_valid",
-    [
-        ("PL", True),
-        ("RU", True),
-        ("RS", True),
-        ("AM", True),
-        ("pl", True),
-        ("XX", False),
-        ("POL", False),
-    ],
-    ids=["pl", "ru", "rs", "am", "lowercase", "not_allowed", "too_long"],
-)
-def test_country_code_parametrized(country, expected_valid):
-    result = validate_field_value(country, "country_code", field_name="country")
-    assert result.is_valid == expected_valid
+# NOTE (Epic 1): country_code field validation was removed together with the
+# personal-data services. These equivalence-class tests were removed as well.

@@ -285,8 +285,8 @@ def mock_fsm():
 
 @pytest.fixture
 def mock_callback():
-    """Return a ``MockCallback`` with an accessible message (doc_visa)."""
-    return MockCallback(data="doc_visa", message_accessible=True)
+    """Return a ``MockCallback`` with an accessible message (doc_poster_terminator1)."""
+    return MockCallback(data="doc_poster_terminator1", message_accessible=True)
 
 
 @pytest.fixture

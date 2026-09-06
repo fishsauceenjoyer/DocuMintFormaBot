@@ -49,10 +49,10 @@ async def test_integration_full_order_flow(
     await cmd_start(msg_start, state)
     assert await state.get_state() == OrderState.choosing_document
 
-    # ── Step 2: Choose document (criminal_record_check) → entering_quantity ──
+    # ── Step 2: Choose document (poster_terminator1) → entering_quantity ──
     from handlers.order import process_document_choice
 
-    callback_doc = MockCallback(data="doc_criminal_record_check", user_id=user_id)
+    callback_doc = MockCallback(data="doc_poster_terminator1", user_id=user_id)
     await process_document_choice(callback_doc, state)
     assert await state.get_state() == OrderState.entering_quantity
 
@@ -64,13 +64,13 @@ async def test_integration_full_order_flow(
     assert await state.get_state() == OrderState.filling_document
 
     # ── Step 4: Fill document fields (3 fields) ─────────────────────
-    # criminal_record_check template has: full_name, birth_date, birth_place
+    # poster_terminator1 template has: size, color, quantity
     from handlers.order import process_document_field
 
     field_values = [
-        "John Doe",  # full_name (text)
-        "15.05.1990",  # birth_date (date, DD.MM.YYYY)
-        "New York",  # birth_place (text)
+        "A4",  # size (choice)
+        "color",  # color (choice)
+        "2",  # quantity (integer)
     ]
 
     for value in field_values:
@@ -119,7 +119,7 @@ async def test_integration_full_order_flow(
 
         order = orders[0]
         assert order.status == "paid"
-        assert order.total_price == 25  # 1 × criminal_record_check (25 EUR)
+        assert order.total_price == 10  # 1 × poster_terminator1 (10 EUR)
         assert order.payment_method == "blik"
         assert order.payment_proof_file_id == "proof_123.jpg"
         assert order.user_id == user_id
@@ -136,24 +136,24 @@ async def test_integration_full_order_flow(
         assert len(items) == 1, f"Expected 1 order item, got {len(items)}"
 
         item = items[0]
-        assert item.document_type == "criminal_record_check"
+        assert item.document_type == "poster_terminator1"
         assert item.quantity == 1
-        assert item.unit_price == 25
+        assert item.unit_price == 10
 
         # Verify the JSON data contains the filled-in fields
         item_data = json.loads(item.data_json)
-        assert item_data["type"] == "criminal_record_check"
+        assert item_data["type"] == "poster_terminator1"
         assert item_data["quantity"] == 1
         assert len(item_data["items"]) == 1
         filled = item_data["items"][0]
-        assert filled["full_name"] == "John Doe"
-        assert filled["birth_date"] == "15.05.1990"
-        assert filled["birth_place"] == "New York"
+        assert filled["size"] == "A4"
+        assert filled["color"] == "color"
+        assert filled["quantity"] == "2"
 
         # Verify documents_json on the order record
         docs = json.loads(order.documents_json)
         assert len(docs) == 1
-        assert docs[0]["type"] == "criminal_record_check"
+        assert docs[0]["type"] == "poster_terminator1"
 
         order_id = order.order_id
 
@@ -167,9 +167,9 @@ async def test_integration_full_order_flow(
     assert "NEW ORDER" in caption
     assert order_id in caption
     # Document name should appear (from template name_ru since default lang is ru)
-    assert "Справка о несудимости" in caption
+    assert "Терминатор 1" in caption
     # Filled field value should appear in the order details
-    assert "John Doe" in caption
+    assert "A4" in caption
 
     # ── A4: User final message ──────────────────────────────────────
     assert msg_proof._answered_text is not None, "User should receive final message"

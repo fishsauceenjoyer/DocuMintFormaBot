@@ -80,9 +80,9 @@ class TestDocumentTypeCRUD:
         # Ensure default document types are inserted
         await init_default_document_types(mock_db_session)
 
-        doc_type = await get_document_type(mock_db_session, "visa")
+        doc_type = await get_document_type(mock_db_session, "poster_terminator1")
         assert doc_type is not None
-        assert doc_type.code == "visa"
+        assert doc_type.code == "poster_terminator1"
 
     async def test_get_document_type_not_found(self, mock_db_session):  # noqa: F811
         """Verify get_document_type returns None for missing code."""
@@ -99,10 +99,12 @@ class TestDocumentTypeCRUD:
         await init_default_document_types(mock_db_session)
 
         types = await get_all_document_types(mock_db_session)
-        assert len(types) >= 4  # visa, passport, criminal_record_check, apostille
+        assert (
+            len(types) >= 3
+        )  # poster_terminator1, poster_terminator2, poster_predator
         codes = [t.code for t in types]
-        assert "visa" in codes
-        assert "passport" in codes
+        assert "poster_terminator1" in codes
+        assert "poster_terminator2" in codes
 
 
 class TestOrderCRUD:
@@ -127,7 +129,11 @@ class TestOrderCRUD:
                 "address": "Test St 1",
             },
             documents=[
-                {"type": "visa", "quantity": 1, "items": [{"full_name": "Test"}]}
+                {
+                    "type": "poster_terminator1",
+                    "quantity": 1,
+                    "items": [{"size": "A4"}],
+                }
             ],
         )
 
@@ -243,12 +249,12 @@ class TestOrderCRUD:
         item = await create_order_item(
             db=mock_db_session,
             order_id=order.id,
-            document_type="visa",
+            document_type="poster_terminator1",
             quantity=2,
             unit_price=150,
-            data={"type": "visa", "items": [{"full_name": "Test"}]},
+            data={"type": "poster_terminator1", "items": [{"size": "A4"}]},
         )
-        assert item.document_type == "visa"
+        assert item.document_type == "poster_terminator1"
         assert item.quantity == 2
         assert item.unit_price == 150
 
@@ -267,4 +273,4 @@ class TestInitDB:
         from db.crud import get_all_document_types
 
         types = await get_all_document_types(mock_db_session)
-        assert len(types) >= 4
+        assert len(types) >= 3
