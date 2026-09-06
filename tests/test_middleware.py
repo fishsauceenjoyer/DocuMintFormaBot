@@ -206,7 +206,7 @@ class TestLoggingMiddleware:
             id="cb_123",
             from_user=user,
             chat_instance="inst_123",
-            data="doc_demo_service",
+            data="doc_poster_terminator1",
         )
 
         middleware = LoggingMiddleware()

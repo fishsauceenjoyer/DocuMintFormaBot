@@ -1,8 +1,8 @@
 """Tests for the bug fixes in the current branch.
 
-Covers:
-1. Multi-part document codes (e.g. ``demo_check_check``) — the old
-   ``split("_")[1]`` returned only ``criminal``; fixed with ``split("_", 1)``.
+    Covers:
+    1. Multi-part document codes (e.g. ``poster_terminator1``) — the old
+       ``split("_")[1]`` returned only ``poster``; fixed with ``split("_", 1)``.
 2. Markdown escaping in ``router._escape_markdown`` — user input containing
    ``_``, ``*``, ``[``, `` ` `` no longer breaks Telegram's Markdown parser.
 3. ``cancel_to_menu`` sends a *new* welcome message instead of editing the
@@ -19,11 +19,11 @@ from utils import router
 
 
 @pytest.mark.asyncio
-async def test_process_document_choice_demo_check_check(monkeypatch):
-    """``doc_demo_check_check`` must resolve to the full template name.
+async def test_process_document_choice_poster_terminator1(monkeypatch):
+    """``doc_poster_terminator1`` must resolve to the full template name.
 
     Regression: the old ``callback.data.split("_")[1]`` returned only
-    ``criminal``, causing a "Template not found" error.
+    ``poster``, causing a "Template not found" error.
     """
     from aiogram.types import CallbackQuery, Chat, Message, User
 
@@ -44,7 +44,7 @@ async def test_process_document_choice_demo_check_check(monkeypatch):
         from_user=user,
         chat_instance="inst1",
         message=msg,
-        data="doc_demo_check_check",
+        data="doc_poster_terminator1",
     )
 
     # Monkey-patch the template lookup to confirm it's called with the full key
@@ -66,38 +66,38 @@ async def test_process_document_choice_demo_check_check(monkeypatch):
     parts = callback.data.split("_", 1)
     assert len(parts) == 2
     assert parts[0] == "doc"
-    assert parts[1] == "demo_check_check"
+    assert parts[1] == "poster_terminator1"
 
     # Verify the template actually exists
-    template = get_template("demo_check_check")
-    assert template is not None, "demo_check_check template must exist in YAML"
-    assert template["name_en"] == "📜 demo_check check"
+    template = get_template("poster_terminator1")
+    assert template is not None, "poster_terminator1 template must exist in YAML"
+    assert template["name_en"] == "🎬 Terminator 1"
 
 
 @pytest.mark.asyncio
 async def test_process_document_choice_single_word_code(monkeypatch):
-    """Single-word codes like ``doc_demo_service`` must still work after the fix."""
-    parts = "doc_demo_service".split("_", 1)
+    """Single-word codes like ``doc_poster_terminator1`` must still work after the fix."""
+    parts = "doc_poster_terminator1".split("_", 1)
     assert len(parts) == 2
     assert parts[0] == "doc"
-    assert parts[1] == "demo_service"
+    assert parts[1] == "poster_terminator1"
 
     from templates.documents import get_template
 
-    template = get_template("demo_service")
+    template = get_template("poster_terminator1")
     assert template is not None
-    assert "demo_service application" in template["name_en"]
+    assert "Terminator 1" in template["name_en"]
 
 
 @pytest.mark.asyncio
-async def test_process_document_choice_apostille():
-    """``doc_apostille`` must also resolve correctly."""
-    parts = "doc_apostille".split("_", 1)
-    assert parts[1] == "apostille"
+async def test_process_document_choice_poster_predator():
+    """``doc_poster_predator`` must also resolve correctly."""
+    parts = "doc_poster_predator".split("_", 1)
+    assert parts[1] == "poster_predator"
 
     from templates.documents import get_template
 
-    assert get_template("apostille") is not None
+    assert get_template("poster_predator") is not None
 
 
 # ── 2. Markdown escaping ──────────────────────────────────────────────

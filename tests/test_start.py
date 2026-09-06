@@ -108,8 +108,8 @@ class TestCallbackNewOrder:
         # Mock templates to return known docs
         with patch("templates.documents.get_all_templates") as mock_templates:
             mock_templates.return_value = [
-                ("demo_service", "demo_service application"),
-                ("demo_document", "Foreign demo_document"),
+                ("poster_terminator1", "🎬 Терминатор 1"),
+                ("poster_terminator2", "🎬 Терминатор 2"),
             ]
             await callback_new_order(callback, state)
 
@@ -126,7 +126,7 @@ class TestCallbackNewOrder:
         state = MockFSMContext()
 
         with patch("templates.documents.get_all_templates") as mock_templates:
-            mock_templates.return_value = [("demo_service", "demo_service")]
+            mock_templates.return_value = [("poster_terminator1", "🎬 Терминатор 1")]
             await callback_new_order(callback, state)
 
         assert callback._answered is True

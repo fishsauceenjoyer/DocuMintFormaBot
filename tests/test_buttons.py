@@ -17,7 +17,10 @@ class TestDocumentKeyboard:
 
     def test_document_keyboard_has_buttons(self):
         """Verify document keyboard contains buttons for each doc type."""
-        docs = [("demo_service", "demo_service application"), ("demo_document", "Foreign demo_document")]
+        docs = [
+            ("poster_terminator1", "🎬 Терминатор 1"),
+            ("poster_terminator2", "🎬 Терминатор 2"),
+        ]
         keyboard = buttons.document_keyboard(docs)
 
         assert isinstance(keyboard, InlineKeyboardMarkup)
@@ -27,14 +30,17 @@ class TestDocumentKeyboard:
 
     def test_document_keyboard_callback_data(self):
         """Verify callback data follows 'doc_<code>' pattern."""
-        docs = [("demo_service", "demo_service"), ("demo_document", "demo_document")]
+        docs = [
+            ("poster_terminator1", "🎬 Терминатор 1"),
+            ("poster_terminator2", "🎬 Терминатор 2"),
+        ]
         keyboard = buttons.document_keyboard(docs)
 
         callback_data = [
             btn.callback_data for row in keyboard.inline_keyboard for btn in row
         ]
-        assert "doc_demo_service" in callback_data
-        assert "doc_demo_document" in callback_data
+        assert "doc_poster_terminator1" in callback_data
+        assert "doc_poster_terminator2" in callback_data
         assert "help_manager" in callback_data
         assert "cancel_to_menu" in callback_data
 

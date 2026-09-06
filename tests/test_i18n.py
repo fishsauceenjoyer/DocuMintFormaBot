@@ -59,10 +59,14 @@ class TestI18n:
         i18n = I18n()
         # Test with a key that accepts format parameters
         result = i18n.get(
-            "choose_quantity", language="en", name="demo_service", price=35, currency="€"
+            "choose_quantity",
+            language="en",
+            name="Terminator 1",
+            price=10,
+            currency="€",
         )
-        assert "demo_service" in result
-        assert "35" in result
+        assert "Terminator 1" in result
+        assert "10" in result
         assert "€" in result
 
     def test_available_languages(self):
