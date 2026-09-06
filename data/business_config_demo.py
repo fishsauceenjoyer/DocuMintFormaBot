@@ -11,8 +11,8 @@ services ("Терминатор 1", "Терминатор 2", "Хищник") wi
 Pricing is computed as: base price (per film) + size surcharge + color surcharge.
 
 To activate this config, rename it to ``business_config.py`` (or point the
-import in ``templates/documents.py`` to this module). The original configs
-(``business_config.py`` / ``business_config_original.py``) remain untouched.
+import in ``templates/documents.py`` to this module). The original config
+(``business_config.py``) remains untouched.
 """
 
 from typing import Any, Dict, List, Optional
@@ -174,7 +174,7 @@ DELIVERY_PRICE_EUR: int = 5
 PAYMENT_DETAILS: Dict[str, str] = {
     "blik": "💳 Blik перевод на номер телефона:\n"
             "Номер: +48 123 456 789\n"
-            "Получатель: Consular Services Ltd.",
+            "Получатель: Demo Print Ltd.",
     "uah": "🇺🇦 Перевод на гривневую карту ПриватБанк:\n"
            "Карта: 5168 7456 3456 7890\n"
            "Получатель: Иванова А.",

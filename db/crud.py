@@ -166,7 +166,7 @@ async def get_document_type(db: AsyncSession, code: str) -> Optional[DocumentTyp
 
     Args:
         db: Асинхронная сессия базы данных.
-        code: Код типа документа (demo_category, bhp, psychotests, demo_code).
+        code: Код типа документа (например, poster_terminator1).
 
     Returns:
         Объект DocumentType или None, если не найден.

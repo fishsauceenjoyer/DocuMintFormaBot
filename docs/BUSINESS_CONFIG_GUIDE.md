@@ -9,9 +9,9 @@ All domain-specific business data lives in **`data/business_config.py`**. This f
 is the contract between the bot logic, the database schema, and the validators.
 
 Document templates (fields, prices, names) are loaded from
-**`config/templates.yaml`** so business users can edit them without touching Python
-code. The YAML loader in `data/business_config.py` parses that file into the same
-structure the code expects.
+**`configs/base.yaml`** and **`configs/services.yaml`** so business users can edit them
+without touching Python code. The loader in `config/loader.py` parses those files
+into the same structure the code expects.
 
 ## Key Constants
 
@@ -23,8 +23,7 @@ structure the code expects.
 | `DELIVERY_PRICE_EUR` | `int` | Delivery price in EUR |
 | `PAYMENT_DETAILS` | `Dict[str, str]` | Payment instructions per method (`blik`, `uah`, `usdt`) |
 | `SUPPORTED_CURRENCIES` | `List[str]` | `["EUR", "PLN"]` |
-| `COUNTRY_CODES` / `DESTINATION_COUNTRIES` | `Dict`/`List` | Allowed destination countries for demo_service fields |
-| `demo_document_ref_PATTERN` | `str` | Regex for demo_document number format |
+| `COUNTRY_CODES` / `DESTINATION_COUNTRIES` | `Dict`/`List` | Optional destination-country codes for travel-style fields (empty for posters) |
 
 Helper functions: `get_template(doc_code)`, `get_all_templates()`,
 `get_price_pln(doc_code)`, `get_price_eur(doc_code)`.
@@ -51,10 +50,10 @@ uses `truncate_for_storage` with the matching per-field limits.
 
 1. **Never hardcode** document types, prices, routing keys, or payment details in
    handlers/tests — always import from `data/business_config.py`.
-2. **Never change** `data/business_config_original.py` — it is a frozen reference
-   file used to restore the original business data.
-3. **Keep types aligned**: if you add a document template in
-   `config/templates.yaml`, ensure `ROUTING_KEYS` (and `.env` vars) cover it, and
+2. **Do not restore removed services**: the project intentionally ships only
+   demo poster services and must not be reverted to personal-data collections.
+3. **Keep types aligned**: if you add a service template in
+   `configs/services.yaml`, ensure `ROUTING_KEYS` (and `.env` vars) cover it, and
    that tests exercise it.
 4. **Currencies**: the bot supports `EUR` and `PLN` only. Any new currency requires
    updating `SUPPORTED_CURRENCIES`, `config.py`, and `services/pricing.py`.
@@ -72,8 +71,6 @@ The `Field` class in `templates/fields.py` supports the following types:
 | `email` | Email address | — |
 | `phone` | Phone number | — |
 | `optional_text` | Optional free text | `max_length`, `optional=True` |
-| `demo_document_ref` | demo_document number (A-Z, 0-9, -./) | — |
-| `country_code` | 2-letter country code | — |
 | `choice` | Pick one value from a list | `choices: list[str]` |
 | `integer` | Whole number within a range | `min_value`, `max_value` |
 
@@ -108,9 +105,9 @@ Field(
 
 ## Common Pitfalls
 
-- Forgetting that `demo_check_check` and other multi-word codes break naive
-  `split("_")[1]` parsing — use `split("_", 1)`.
-- Hardcoding a price that differs from `config/templates.yaml`.
+- Forgetting that multi-word codes (e.g. `poster_terminator1`, `poster_predator`)
+  break naive `split("_")[1]` parsing — use `split("_", 1)`.
+- Hardcoding a price that differs from `configs/services.yaml`.
 - Adding a field type without a corresponding branch in `utils/validation.py`.
 - Storing delivery values longer than the DB column permits (see table above).
 - Adding a `choice` field without `choices` — validation will reject all values.

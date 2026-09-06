@@ -21,11 +21,10 @@ services:
       - ADMIN_USERNAME=your_admin_username
       # Подключение к PostgreSQL (создать БД в разделе "Базы данных" Timeweb)
       - DATABASE_URL=postgresql://user:password@host:5432/dbname
-      # Маршрутизация заказов — ID чатов менеджеров
-      - ROUTING_demo_category=-100123456789
-      - ROUTING_BHP=-100987654321
-      - ROUTING_PSYCHOTESTS=123456789
-      - ROUTING_demo_code=-100123456788
+      # Маршрутизация заказов — ID чатов менеджеров (демо постеры)
+      - ROUTING_POSTER_TERMINATOR1=-100123456789
+      - ROUTING_POSTER_TERMINATOR2=-100987654321
+      - ROUTING_POSTER_PREDATOR=-100123456788
       - ROUTING_DEFAULT=555555555
       # Платёжные реквизиты
       - PAYMENT_BLIK=Номер телефона: +48 123 456 789

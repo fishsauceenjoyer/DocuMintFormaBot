@@ -12,8 +12,8 @@ Usage::
     loader.load_from_yaml("configs/base.yaml")
     loader.load_from_yaml("configs/services.yaml")
 
-    service = loader.get_service("demo_service")
-    errors = loader.validate_order([{"type": "demo_service", "quantity": 6}])
+    service = loader.get_service("poster_terminator1")
+    errors = loader.validate_order([{"type": "poster_terminator1", "quantity": 6}])
 """
 
 from __future__ import annotations
@@ -105,7 +105,6 @@ class BaseConfig(BaseModel):
     delivery: Dict[str, Any] = Field(default_factory=dict)
     payment_methods: Dict[str, str] = Field(default_factory=dict)
     countries: Dict[str, Dict[str, str]] = Field(default_factory=dict)
-    demo_document_ref_pattern: str = r"^[A-Z0-9\s\-\.\/]{3,30}$"
     routing_keys: Dict[str, str] = Field(default_factory=dict)
 
 
@@ -177,7 +176,7 @@ class BusinessConfigLoader:
         """Return the service dataclass by its id, or ``None`` if missing.
 
         Args:
-            service_id: Unique service identifier (e.g. ``"demo_service"``).
+            service_id: Unique service identifier (e.g. ``"poster_terminator1"``).
 
         Returns:
             :class:`ServiceConfig` or ``None``.
@@ -230,7 +229,7 @@ class BusinessConfigLoader:
 
         Args:
             items: List of cart items, e.g.
-                ``[{"type": "demo_service", "quantity": 2}]``.
+                ``[{"type": "poster_terminator1", "quantity": 2}]``.
 
         Returns:
             List of error strings (empty when valid).

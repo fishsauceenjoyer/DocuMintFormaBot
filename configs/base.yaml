@@ -5,9 +5,9 @@
 # version, currencies, delivery prices, payment details,
 # and allowed countries.
 #
-# ⚠️  PD NOTE (Epic 1): the demo_document number pattern and the
-# demo_service/demo_document/demo_check/apostille routing keys were removed
-# together with the personal-data services.
+# ⚠️  This demo project processes no personal data.
+# Lines related to personal identifiers and per-document routing
+# were removed together with the previously bundled services.
 #
 # Edit this file to change business-wide settings without
 # touching Python code.
@@ -30,7 +30,7 @@ payment_methods:
   blik: |
     💳 Blik перевод на номер телефона:
     Номер: +48 123 456 789
-    Получатель: Consular Services Ltd.
+    Получатель: Demo Print Ltd.
   uah: |
     🇺🇦 Перевод на гривневую карту ПриватБанк:
     Карта: 5168 7456 3456 7890

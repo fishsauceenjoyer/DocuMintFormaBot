@@ -8,14 +8,19 @@ management, delivery/payment options, and a manager/admin panel.
 > routing keys) lives in a single config file — drop in your own data to
 > repurpose the bot for any print-on-demand scenario.
 
+> ⚖️ **Legal notice:** this project does **not** collect, store or process
+> personal data (ID numbers, dates of birth, residential addresses, demo_document,
+> demo_service data, etc.). All data used in code, configuration and tests is
+> **demonstration-only** and generated for local development purposes.
+
 ---
 
 ## Features
 
 - 🌍 **Multi-language** — English, Russian, Ukrainian (auto-detected from
   Telegram settings, falls back to English)
-- 📋 **Document catalogue** — choose from demo_service applications, demo_document,
-  demo_check checks, apostille, etc.
+- 📋 **Product catalogue** — choose from demo poster prints (Terminator,
+  Predator) or plug in your own services via the config
 - 📝 **Dynamic field questionnaire** — each document type defines its own set
   of input fields
 - 🛒 **Cart** — add multiple documents of different types in a single order
@@ -130,10 +135,9 @@ Edit `.env` in any text editor. Minimum required changes:
 5. **Critical:** Group chat IDs for bots always start with `-100` (e.g. `-100123456789`). Do NOT use personal chat IDs.
 6. Paste the IDs into `.env`:
    ```env
-   ROUTING_demo_service=-100123456789
-   ROUTING_demo_document=-100987654321
-   ROUTING_demo_check=-100123456788
-   ROUTING_APOSTILLE=-100123456787
+   ROUTING_POSTER_TERMINATOR1=-100123456789
+   ROUTING_POSTER_TERMINATOR2=-100987654321
+   ROUTING_POSTER_PREDATOR=-100123456788
    ROUTING_DEFAULT=-100123456786
    ```
 
@@ -165,11 +169,10 @@ docker compose down
 BOT_TOKEN=your_bot_token_here
 ADMIN_USERNAME=your_admin_username
 
-# Routing — chat IDs for each document type
-ROUTING_demo_service=-100123456789
-ROUTING_demo_document=-100987654321
-ROUTING_demo_check=123456789
-ROUTING_APOSTILLE=-100123456788
+# Routing — chat IDs for each document type (demo posters)
+ROUTING_POSTER_TERMINATOR1=-100123456789
+ROUTING_POSTER_TERMINATOR2=-100987654321
+ROUTING_POSTER_PREDATOR=-100123456788
 ROUTING_DEFAULT=555555555
 
 # Payment details — shown to customer after order
@@ -195,41 +198,26 @@ business. It defines:
 
 ### Prices (demo)
 
-| Document                              | PLN  | EUR  |
-|---------------------------------------|------|------|
-| 🗺 demo_service application                   | 150  | 35   |
-| 🛂 Foreign demo_document                   | 200  | 45   |
-| 📜 demo_check check              | 100  | 25   |
-| 📑 Apostille                          | 120  | 30   |
-| 🚚 Delivery                           | +20  | +5   |
+| Product                            | PLN  | EUR  |
+|------------------------------------|------|------|
+| 🎬 Terminator 1 poster             | 40   | 10   |
+| 🎬 Terminator 2 poster             | 60   | 15   |
+| 🌌 Predator poster                 | 80   | 20   |
+| 🚚 Delivery                        | +20  | +5   |
 
-### Switching business configuration
+### Business configuration files
 
-The repository ships with **three** business config files:
+The repository ships two business config files:
 
 | File | Purpose |
 |------|---------|
-| `data/business_config.py` | **Active** — demo "consular services" (demo_service, demo_document, etc.) |
-| `data/business_config_original.py` | **Reference** — original data (demo_category, BHP, demo_code, psychotests) — **not imported** |
-| `data/business_config_demo.py` | **Demo** — poster printing services (Терминатор 1/2, Хищник) — **not imported** |
+| `data/business_config.py` | **Active** — loads services from `configs/*.yaml` (demo posters) |
+| `data/business_config_demo.py` | **Reference** — self-contained demo poster config (Терминатор 1/2, Хищник) — **not imported** |
 
-To switch back to the original configuration:
-
-1. Rename files:
-   ```bash
-   mv data/business_config.py data/business_config_demo.py      # keep demo as backup
-   mv data/business_config_original.py data/business_config.py  # activate original
-   ```
-2. Update `.env` — replace routing variable names and chat IDs:
-
-   | Demo variable | Original variable |
-   |---|---|
-   | `ROUTING_demo_service` | `ROUTING_demo_category` |
-   | `ROUTING_demo_document` | `ROUTING_BHP` |
-   | `ROUTING_demo_check` | `ROUTING_PSYCHOTESTS` |
-   | `ROUTING_APOSTILLE` | `ROUTING_demo_code` |
-
-3. (Optional) Reset `locales/` strings if the original payment methods are used.
+The active config is `configs/base.yaml` + `configs/services.yaml`, read through
+`config/loader.py` (YAML), so business data can be edited without touching Python.
+`data/business_config_demo.py` exists as a standalone reference and is **not
+imported** at runtime.
 
 ---
 
@@ -289,8 +277,8 @@ To switch back to the original configuration:
 
 ### Обратная совместимость
 
-- `data/business_config_original.py` и `data/business_config.py` **не изменяются** —
-  они остаются доступными для восстановления.
+- Демо-конфиг постеров (`data/business_config_demo.py`) не импортируется по умолчанию —
+  он остаётся как автономный справочник.
 - Существующие тесты (`tests/test_business_config.py`) продолжают работать,
   так как активный конфиг не меняется.
 - Новые тесты для демо-конфига: `tests/test_demo_config.py`.
@@ -311,10 +299,9 @@ cp .env.example .env
 |---|---|---|
 | `BOT_TOKEN` | ✅ | Токен бота от [@BotFather](https://t.me/BotFather) |
 | `ADMIN_USERNAME` | ✅ | Имя пользователя админа в Telegram (без `@`) |
-| `ROUTING_demo_service` | ✅ | Chat ID для заказов на визу |
-| `ROUTING_demo_document` | ✅ | Chat ID для заказов на заграндокумент |
-| `ROUTING_demo_check` | ✅ | Chat ID для справок о несудимости |
-| `ROUTING_APOSTILLE` | ✅ | Chat ID для апостиля |
+| `ROUTING_POSTER_TERMINATOR1` | ❌ | Chat ID для заказов на постер «Терминатор 1» |
+| `ROUTING_POSTER_TERMINATOR2` | ❌ | Chat ID для заказов на постер «Терминатор 2» |
+| `ROUTING_POSTER_PREDATOR` | ❌ | Chat ID для заказов на постер «Хищник» |
 | `ROUTING_DEFAULT` | ✅ | Chat ID по умолчанию (fallback) |
 | `MANAGER_ID` | ❌ | Chat ID для fallback-уведомлений об ошибках |
 | `PAYMENT_BLIK` | ❌ | Реквизиты Blik |
@@ -417,9 +404,9 @@ client to confirm everything works.
 ### Happy path (new order)
 
 1. **Start** – send `/start` → you should see the main menu with 3 buttons
-2. **New order** – tap *"📋 New order"* → document list appears
-3. **Select document** – tap *"🗺 demo_service application"* → quantity prompt with the
-   price in EUR (e.g. `35 €`)
+2. **New order** – tap *"📋 New order"* → product list appears
+3. **Select product** – tap *"🎬 Terminator 1"* → quantity prompt with the
+   price in EUR (e.g. `10 €`)
 4. **Pick quantity** – tap `2` → field questionnaire starts
 5. **Fill fields** – answer each field (e.g. type "John Doe" for "Full name")
    → after the last field the cart is updated and delivery choice appears

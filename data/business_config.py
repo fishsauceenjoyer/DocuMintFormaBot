@@ -33,7 +33,7 @@ def reload_config() -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Allowed destination countries (for demo_service / document travel fields)
+# Optional destination-country codes (travel-style fields — empty in the poster demo)
 # ──────────────────────────────────────────────────────────────────────────
 COUNTRY_CODES: Dict[str, Dict[str, str]] = (
     _loader.base.countries if _loader.base else {}
