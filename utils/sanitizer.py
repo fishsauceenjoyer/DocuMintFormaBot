@@ -1,7 +1,7 @@
 """Sanitization helpers for user-supplied text.
 
-The bot accepts arbitrary text from users (names, addresses, PESEL, phone
-numbers) and forwards it to managers via Telegram messages.  Unescaped
+The bot accepts arbitrary text from users (e.g. names and phone numbers)
+and forwards it to managers via Telegram messages.  Unescaped
 text could:
 
 * break the Markdown formatting of a manager notification,

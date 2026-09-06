@@ -116,7 +116,7 @@ async def process_document_choice(callback: CallbackQuery, state: FSMContext):
         return
 
     # The callback data format is "doc_{doc_type}" where doc_type may contain underscores
-    # e.g. "doc_criminal_record_check" -> doc_type = "criminal_record_check"
+    # e.g. "doc_poster_terminator1" -> doc_type = "poster_terminator1"
     # Using split with maxsplit=1 to handle multi-part document codes
     parts = callback.data.split("_", 1)
     if len(parts) < 2:

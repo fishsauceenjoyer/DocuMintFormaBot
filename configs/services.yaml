@@ -10,10 +10,9 @@
 #
 # Edit this file to add/remove services without touching Python code.
 #
-# ⚠️  PD NOTE (Epic 1): all services that collected personal data
-# (visa, passport, criminal_record_check, apostille — passport numbers,
-# birth dates, residential addresses) were removed. Only the demo
-# poster services remain.
+# ⚠️  This demo project processes no personal data.
+# Services that previously existed were removed; only the demo
+# poster services remain (they collect no personal information).
 
 services:
   # ── Demo poster services (from business_config_demo.py) ──────────

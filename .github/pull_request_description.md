@@ -46,7 +46,7 @@ Closes: #N/A (refactor continuation)
 
 ## Notes for Reviewers
 
-- Migration is backward compatible — the legacy `data/business_config_original.py` is preserved for reference.
+- The active business data lives in `configs/*.yaml` (loaded via `get_loader()`); `data/business_config.py` re-exports the same constants for backward compatibility.
 - The config loader uses a singleton pattern (`get_loader()`) that loads YAML configs on first access.
 - The `config.py` root module was renamed to `config_runtime.py` to avoid namespace conflicts with the new `config/` package.
 - Windows PowerShell compatibility: all shell commands in the dev workflow avoid `&&` chaining.

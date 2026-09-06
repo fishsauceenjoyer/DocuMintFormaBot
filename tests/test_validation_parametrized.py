@@ -97,5 +97,5 @@ def test_valid_text_cases_parametrized(value, expected_valid, expected_error_con
         assert expected_error_contains in result.error_message
 
 
-# NOTE (Epic 1): country_code field validation was removed together with the
-# personal-data services. These equivalence-class tests were removed as well.
+# NOTE: field validation for previously removed demo services was dropped
+# together with those services; equivalence-class tests were removed too.

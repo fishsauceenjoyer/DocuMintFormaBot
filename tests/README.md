@@ -55,7 +55,7 @@ between test runs.
    ```python
    @pytest.mark.asyncio
    async def test_something(mock_fsm, clean_user_sessions):
-       callback = MockCallback(data="doc_visa")
+       callback = MockCallback(data="doc_poster_terminator1")
        await my_handler(callback, mock_fsm)
        assert callback._answered is True
    ```

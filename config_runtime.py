@@ -20,7 +20,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Chat IDs for different document types (from .env)
 # Keys are automatically built from the business config's ROUTING_KEYS mapping
-# e.g. ROUTING_VISA, ROUTING_PASSPORT, etc.
+# e.g. ROUTING_POSTER_TERMINATOR1, ROUTING_POSTER_TERMINATOR2, etc.
 ROUTING: dict[str, int] = {
     doc_code: int(os.getenv(env_key, "-100123456789"))
     for doc_code, env_key in ROUTING_KEYS.items()

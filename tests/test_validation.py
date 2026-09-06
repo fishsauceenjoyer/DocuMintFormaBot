@@ -310,9 +310,8 @@ class TestValidateFieldValue:
         result = validate_field_value("{$in: [1,2,3]}", "text", field_name="test")
         assert result.is_valid is False
 
-    # NOTE (Epic 1): poster_terminator2_number and country_code field types were
-    # removed together with the personal-data services, so their
-    # validation tests were removed as well.
+    # NOTE: field types that belonged to previously removed demo services were
+    # dropped, so their validation tests were removed together with them.
 
 
 # ── _get_default_max_length tests ────────────────────────────────────

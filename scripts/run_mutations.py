@@ -1,9 +1,8 @@
 """Native AST-based mutation runner for data/business_config.py.
 
-Mutates 3 simple targets:
+Mutates 2 simple targets:
 1. DELIVERY_PRICE_PLN = 20 -> 0
 2. DELIVERY_PRICE_EUR = 5 -> 0
-3. PASSPORT_NUMBER_PATTERN regex -> different pattern
 
 Runs `uv run pytest` for each mutant and reports killed/survived.
 """
@@ -31,11 +30,6 @@ MUTATIONS = [
         "name": "set DELIVERY_PRICE_EUR to 0",
         "find": "DELIVERY_PRICE_EUR: int = 5",
         "replace": "DELIVERY_PRICE_EUR: int = 0",
-    },
-    {
-        "name": "change PASSPORT_NUMBER_PATTERN regex",
-        "find": 'PASSPORT_NUMBER_PATTERN: str = r"^[A-Z0-9\\s\\-\\.\\/]{3,30}$"',
-        "replace": 'PASSPORT_NUMBER_PATTERN: str = r"^[A-Z0-9]{3,30}$"',
     },
 ]
 

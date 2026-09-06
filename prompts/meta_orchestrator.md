@@ -33,7 +33,7 @@ The repository is a Python Telegram bot (`aiogram 3.x`, `SQLAlchemy 2.0`, `uv`, 
 2. **Preserve the contract:** Never allow a change that violates the FSM structure (`fsm/states.py`), the database schema (`db/models.py`), or the single source of truth (`data/business_config.py`).
 3. **Testability gate:** No change is accepted without a matching test update. If the Developer's output lacks tests, dispatch the QA Automation specialist before merging.
 4. **Conflict resolution:** If the Developer and PR Reviewer disagree, you make the final architectural call — always in favor of architecture stability and offline-testability.
-5. **Zero hallucination policy:** If a specialist's output references templates, prices, routing keys, or document codes that do not exist in `data/business_config.py` or `config/templates.yaml`, reject it immediately and demand a corrected version.
+5. **Zero hallucination policy:** If a specialist's output references templates, prices, routing keys, or document codes that do not exist in `data/business_config.py` or the `configs/*.yaml` files, reject it immediately and demand a corrected version.
 
 ⚠️ STRIKT AI GIT FLOW RULES:
 - Тебе категорически ЗАПРЕЩЕНО делать пуш напрямую в ветки `main` или `master`.
