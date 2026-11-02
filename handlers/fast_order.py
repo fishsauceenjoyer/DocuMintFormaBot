@@ -4,6 +4,7 @@ This module provides a shortcut for known clients who can send their request
 in one free-form message, bypassing the step-by-step FSM.
 """
 
+import logging
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -13,6 +14,9 @@ from config import ROUTING
 from config.loader import get_loader
 from fsm.states import OrderState
 from utils.i18n import get_i18n, user_language
+from utils.router import _safe_send
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -82,6 +86,8 @@ async def process_fast_order(message: Message, state: FSMContext):
 
     from utils.sanitizer import sanitize_for_telegram
 
+    from keyboards.buttons import main_menu_keyboard
+
     safe_message = sanitize_for_telegram(message.text)
     safe_username = sanitize_for_telegram(user.username or "unknown")
 
@@ -93,12 +99,24 @@ async def process_fast_order(message: Message, state: FSMContext):
         f"⚠️ Unpaid — requires manual check by manager"
     )
 
-    await bot.send_message(chat_id=target, text=text, parse_mode="Markdown")
+    try:
+        await _safe_send(
+            bot=bot,
+            chat_id=target,
+            text=text,
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        logger.error("Failed to forward fast order to manager chat %s: %s", target, e)
+        await message.answer(
+            i18n.get("error_bot_error", language=lang),
+            reply_markup=main_menu_keyboard(),
+        )
+        await state.clear()
+        return
 
     lang = user_language(user)
     i18n = get_i18n()
-
-    from keyboards.buttons import main_menu_keyboard
 
     await message.answer(
         i18n.get("fast_order_sent", language=lang), reply_markup=main_menu_keyboard()

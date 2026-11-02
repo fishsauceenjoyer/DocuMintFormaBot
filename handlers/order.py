@@ -353,7 +353,19 @@ async def _notify_admin_validation_error(
             f"💬 Введено: `{sanitize_for_telegram(raw_value[:200])}`\n"
             f"❌ Ошибка: {error_message}"
         )
-        await message.bot.send_message(chat_id=target, text=text, parse_mode="Markdown")
+        try:
+            from utils.router import _safe_send
+
+            await _safe_send(
+                bot=message.bot,
+                chat_id=target,
+                text=text,
+                parse_mode="Markdown",
+            )
+        except Exception as send_err:
+            logger.warning(
+                "Failed to notify admin about validation error: %s", send_err
+            )
     except Exception as e:
         logger.warning(f"Failed to notify admin about validation error: {e}")
 
@@ -780,7 +792,7 @@ async def process_payment_proof(message: Message, state: FSMContext):
             "Please contact support."
         )
 
-    # Save order to database
+    # Save order to database (atomic transaction: order + items commit together)
     async with AsyncSessionLocal() as db:
         db_order = await create_order(
             db=db,
@@ -792,6 +804,7 @@ async def process_payment_proof(message: Message, state: FSMContext):
             payment_proof_file_id=file_id,
             delivery=session.get("delivery"),
             documents=cart,
+            commit=False,
         )
 
         for cart_item in cart:
@@ -805,7 +818,11 @@ async def process_payment_proof(message: Message, state: FSMContext):
                 quantity=cart_item["quantity"],
                 unit_price=price,
                 data=cart_item,
+                commit=False,
             )
+
+        await db.commit()
+        await db.refresh(db_order)
 
     from keyboards.buttons import main_menu_keyboard
 

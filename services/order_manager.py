@@ -41,6 +41,7 @@ class OrderManager:
                 payment_proof_file_id=order_data.get("payment_proof_file_id"),
                 delivery=order_data.get("delivery"),
                 documents=order_data.get("documents"),
+                commit=False,
             )
 
             for item in order_data.get("items", []):
@@ -51,6 +52,7 @@ class OrderManager:
                     quantity=item.get("quantity", 1),
                     unit_price=item.get("unit_price", 0),
                     data=item.get("data"),
+                    commit=False,
                 )
 
             await db.commit()

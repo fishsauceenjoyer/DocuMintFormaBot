@@ -173,7 +173,7 @@ ADMIN_USERNAME=your_admin_username
 ROUTING_POSTER_TERMINATOR1=-100123456789
 ROUTING_POSTER_TERMINATOR2=-100987654321
 ROUTING_POSTER_PREDATOR=-100123456788
-ROUTING_DEFAULT=555555555
+ROUTING_DEFAULT=-100123456789
 
 # Payment details — shown to customer after order
 PAYMENT_BLIK="Blik przelew na numer telefonu: ..."
@@ -473,7 +473,7 @@ make run         # uv run python main.py
 
 ## Quality Pipeline (CI/CD)
 
-The repository uses **AI-Driven Quality Gates** on every push to `feat/payment-methods-rename` and on
+The repository uses **AI-Driven Quality Gates** on every push to any `feat/*` or `fix/*` branch and on
 every Pull Request. The pipeline runs two jobs:
 
 | Job | What it checks | Tools |
@@ -549,7 +549,7 @@ and test generation.
 
 3. **Push the branch** (enter your GitHub username and the token as password):
    ```bash
-   git push -u origin feat/payment-methods-rename
+   git push -u origin feat/your-branch-name
    ```
    - Username: `fishsauceenjoyer`
    - Password: paste your **token** (`ghp_...`)

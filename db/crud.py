@@ -204,6 +204,7 @@ async def create_order(
     payment_proof_file_id: Optional[str] = None,
     delivery: Optional[dict] = None,
     documents: Optional[list] = None,
+    commit: bool = True,
 ) -> Order:
     """
     Создаёт новый заказ в базе данных.
@@ -221,6 +222,8 @@ async def create_order(
         payment_proof_file_id: File_id фото/документа чека.
         delivery: Словарь с данными доставки (name, phone, email, paczkomat).
         documents: Список словарей с данными заказанных документов.
+        commit: Если True, закоммитить транзакцию сразу (для standalone-вызова).
+                Если False, транзакцию управляет вызывающий код.
 
     Returns:
         Созданный объект Order.
@@ -239,8 +242,9 @@ async def create_order(
         documents_json=json.dumps(documents, ensure_ascii=False) if documents else None,
     )
     db.add(order)
-    await db.commit()
-    await db.refresh(order)
+    if commit:
+        await db.commit()
+        await db.refresh(order)
     return order
 
 
@@ -416,6 +420,7 @@ async def create_order_item(
     quantity: int,
     unit_price: int,
     data: Optional[dict] = None,
+    commit: bool = True,
 ) -> OrderItem:
     """
     Создаёт позицию заказа (отдельный тип документа с количеством).
@@ -427,6 +432,8 @@ async def create_order_item(
         quantity: Количество экземпляров.
         unit_price: Цена за единицу в злотых.
         data: JSON-данные с заполненными полями документа.
+        commit: Если True, закоммитить транзакцию сразу (для standalone-вызова).
+                Если False, транзакцию управляет вызывающий код.
 
     Returns:
         Созданный объект OrderItem.
@@ -439,8 +446,9 @@ async def create_order_item(
         data_json=json.dumps(data, ensure_ascii=False) if data else None,
     )
     db.add(item)
-    await db.commit()
-    await db.refresh(item)
+    if commit:
+        await db.commit()
+        await db.refresh(item)
     return item
 
 

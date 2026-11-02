@@ -16,6 +16,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from fsm.states import AdminState
+from services.pricing import currency_symbol
 from utils.auth import admin_only, is_admin
 
 router = Router()
@@ -366,7 +367,7 @@ async def cmd_orders_list(message: Message, state: FSMContext):
 
         text = "📋 **Список заказов:**\n\n"
         for order in all_orders:
-            text += f"• {order.order_id} - {order.status} - {order.total_price} zł\n"
+            text += f"• {order.order_id} - {order.status} - {order.total_price} {currency_symbol('EUR')}\n"
 
         await message.answer(text, parse_mode="Markdown")
 
