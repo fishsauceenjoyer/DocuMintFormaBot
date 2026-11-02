@@ -15,6 +15,7 @@ import traceback
 from typing import Any, Optional
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramForbiddenError
 from aiogram.types import InlineKeyboardMarkup
 
 from config import MANAGER_ID, ROUTING
@@ -51,6 +52,8 @@ async def _safe_send(
 
     Catches all exceptions, logs them with full traceback, and sends a
     fallback notification to ``MANAGER_ID`` so the team knows a chat is down.
+    ``TelegramForbiddenError`` is logged and then re-raised so callers can
+    react to a blocked/unreachable chat instead of silently getting ``False``.
 
     Args:
         bot: Bot instance.
@@ -62,6 +65,10 @@ async def _safe_send(
 
     Returns:
         ``True`` if the send succeeded, ``False`` on failure.
+
+    Raises:
+        TelegramForbiddenError: If the target chat forbids the bot; logged and
+            re-raised instead of being swallowed.
     """
     try:
         if photo:
@@ -80,6 +87,15 @@ async def _safe_send(
                 reply_markup=reply_markup,
             )
         return True
+    except TelegramForbiddenError as e:
+        logger.error(
+            "Failed to send %s to %s: %s\n%s",
+            "photo" if photo else "message",
+            chat_id,
+            e,
+            traceback.format_exc(),
+        )
+        raise
     except Exception as e:
         logger.error(
             "Failed to send %s to %s: %s\n%s",
