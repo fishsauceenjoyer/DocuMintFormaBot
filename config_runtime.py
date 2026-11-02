@@ -21,11 +21,60 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 # Chat IDs for different document types (from .env)
 # Keys are automatically built from the business config's ROUTING_KEYS mapping
 # e.g. ROUTING_POSTER_TERMINATOR1, ROUTING_POSTER_TERMINATOR2, etc.
-ROUTING: dict[str, int] = {
-    doc_code: int(os.getenv(env_key, "-100123456789"))
-    for doc_code, env_key in ROUTING_KEYS.items()
-}
-ROUTING["default"] = int(os.getenv("ROUTING_DEFAULT", "555555555"))
+#
+# Strict validation: a ROUTING chat ID must convert to int, strictly start with
+# "-100" (Telegram supergroup/channel prefix) and be less than -100000000
+# (minimum length check for a real supergroup ID).  Validation is applied only
+# to environment variables that are explicitly present in ``os.environ`` so
+# that module-level defaults keep working for local/dev baseline runs.
+
+
+def _parse_routing_id(raw_value: str, env_key: str) -> int:
+    """Parse and strictly validate a single ROUTING chat ID.
+
+    Rules:
+        - The raw string must convert to ``int``.
+        - The string representation must strictly start with ``"-100"``.
+        - The integer value must be less than ``-100000000`` (real supergroup
+          ID minimum length check).
+
+    Args:
+        raw_value: Raw value read from the environment variable.
+        env_key: Name of the environment variable (used only for clarity).
+
+    Returns:
+        The validated chat ID as ``int``.
+
+    Raises:
+        ValueError: If any validation rule is violated.
+    """
+    try:
+        chat_id = int(raw_value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Критическая ошибка: неверный формат ROUTING ID") from exc
+
+    if not str(chat_id).startswith("-100"):
+        raise ValueError("Критическая ошибка: неверный формат ROUTING ID")
+
+    if chat_id >= -100000000:
+        raise ValueError("Критическая ошибка: неверный формат ROUTING ID")
+
+    return chat_id
+
+
+ROUTING: dict[str, int] = {}
+for doc_code, env_key in ROUTING_KEYS.items():
+    if env_key in os.environ:
+        ROUTING[doc_code] = _parse_routing_id(os.environ[env_key], env_key)
+    else:
+        ROUTING[doc_code] = int(os.getenv(env_key, "-100123456789"))
+
+if "ROUTING_DEFAULT" in os.environ:
+    ROUTING["default"] = _parse_routing_id(
+        os.environ["ROUTING_DEFAULT"], "ROUTING_DEFAULT"
+    )
+else:
+    ROUTING["default"] = int(os.getenv("ROUTING_DEFAULT", "555555555"))
 
 # Payment details (from business_config — override via .env if needed)
 PAYMENT_DETAILS = {
