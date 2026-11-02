@@ -242,6 +242,8 @@ async def create_order(
         documents_json=json.dumps(documents, ensure_ascii=False) if documents else None,
     )
     db.add(order)
+    if not commit:
+        await db.flush()
     if commit:
         await db.commit()
         await db.refresh(order)
@@ -446,6 +448,8 @@ async def create_order_item(
         data_json=json.dumps(data, ensure_ascii=False) if data else None,
     )
     db.add(item)
+    if not commit:
+        await db.flush()
     if commit:
         await db.commit()
         await db.refresh(item)
