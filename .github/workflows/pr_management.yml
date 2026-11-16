@@ -1,0 +1,51 @@
+name: 🔀 PR Management (Squash and Merge)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🧹 ОЧИСТКА ИСТОРИИ ОТ ИИ-СПАМА
+#
+# ИИ-агенты генерируют десятки микро-коммитов внутри долгоживущих веток
+# (feature/, chore/, fix/). Этот workflow принудительно объединяет ВСЕ
+# микро-коммиты в ОДИН аккуратный коммит при слиянии PR (Squash and Merge),
+# чтобы история `main` оставалась чистой и читаемой.
+#
+# Подробнее: docs/AI_GIT_WORKFLOW.md
+# ═══════════════════════════════════════════════════════════════════════════
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  squash_and_merge:
+    name: 🧹 Squash and Merge (очистка от микро-коммитов)
+    runs-on: ubuntu-latest
+
+    # Автоматически мерджим только "чистые" ветки задач (feature/, chore/, fix/, docs/).
+    # Ветки micro/* НЕ мерджим напрямую — они должны быть собраны скриптом
+    # utils/merge_micro_branches.py в единую feature/combined-release.
+    if: |
+      startsWith(github.head_ref, 'feature/') ||
+      startsWith(github.head_ref, 'chore/') ||
+      startsWith(github.head_ref, 'fix/') ||
+      startsWith(github.head_ref, 'docs/')
+
+    steps:
+      - name: 🔀 Автоматический Squash-мердж PR
+        # merge_method: squash — все микро-коммиты ветки объединяются в один
+        # аккуратный коммит в main. Это ключевой механизм борьбы с ИИ-спамом.
+        uses: pascalgn/automerge-action@v0.16.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: squash
+          MERGE_LABELS: ""
+          MERGE_RETRIES: "10"
+          MERGE_RETRY_SLEEP: "30000"
+          MERGE_DELETE_BRANCH: "true"
+          MERGE_COMMIT_MESSAGE: "pull-request-title-and-description"

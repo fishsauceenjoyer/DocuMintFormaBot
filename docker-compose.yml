@@ -1,0 +1,62 @@
+# ============================================
+# Docker Compose for DocuMintFormaBot
+# ============================================
+
+services:
+  bot:
+    build: .
+    container_name: documintformabot
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    env_file:
+      - .env
+    volumes:
+      # Mount .env file for configuration
+      - ./.env:/app/.env:ro
+      # Persist SQLite database between restarts (локальная разработка)
+      - ./data:/app/data
+    environment:
+      # Локально используем SQLite (переопределяется на PostgreSQL через .env при деплое)
+      - DATABASE_URL=sqlite:///data/bot.db
+    # Для локального тестирования с PostgreSQL — раскомментировать:
+    # depends_on:
+    #   - postgres
+
+  # Redis for FSM storage in production (optional)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: tg-bot-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # PostgreSQL for local development (опционально)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: tg-bot-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: bot
+  #     POSTGRES_PASSWORD: bot_password
+  #     POSTGRES_DB: documint_bot
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U bot -d documint_bot"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  postgres_data:

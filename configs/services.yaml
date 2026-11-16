@@ -1,0 +1,95 @@
+# ============================================
+# Services configuration
+# ============================================
+# Each service defines:
+#   - id: unique service identifier
+#   - name: localized display names (ru/en/uk)
+#   - price: base price (EUR) + optional PLN price + currency
+#   - fields: list of input fields
+#   - limits: order constraints
+#
+# Edit this file to add/remove services without touching Python code.
+#
+# ⚠️  This demo project processes no personal data.
+# Services that previously existed were removed; only the demo
+# poster services remain (they collect no personal information).
+
+services:
+  # ── Demo poster services (from business_config_demo.py) ──────────
+  - id: poster_terminator1
+    name:
+      ru: "🎬 Терминатор 1"
+      en: "🎬 Terminator 1"
+      uk: "🎬 Термінатор 1"
+    price:
+      base: 10
+      pln: 40
+      currency: EUR
+    fields:
+      - id: size
+        prompt: "📐 Выберите размер постера"
+        type: choice
+        choices: ["A4", "A3", "A2"]
+      - id: color
+        prompt: "🎨 Выберите цветность"
+        type: choice
+        choices: ["color", "bw"]
+      - id: quantity
+        prompt: "🔢 Количество экземпляров (1–5)"
+        type: integer
+        min: 1
+        max: 5
+    limits:
+      max_per_order: 5
+
+  - id: poster_terminator2
+    name:
+      ru: "🎬 Терминатор 2"
+      en: "🎬 Terminator 2"
+      uk: "🎬 Термінатор 2"
+    price:
+      base: 15
+      pln: 60
+      currency: EUR
+    fields:
+      - id: size
+        prompt: "📐 Выберите размер постера"
+        type: choice
+        choices: ["A4", "A3", "A2"]
+      - id: color
+        prompt: "🎨 Выберите цветность"
+        type: choice
+        choices: ["color", "bw"]
+      - id: quantity
+        prompt: "🔢 Количество экземпляров (1–5)"
+        type: integer
+        min: 1
+        max: 5
+    limits:
+      max_per_order: 5
+
+  - id: poster_predator
+    name:
+      ru: "🎬 Хищник"
+      en: "🎬 Predator"
+      uk: "🎬 Хижак"
+    price:
+      base: 20
+      pln: 80
+      currency: EUR
+    fields:
+      - id: size
+        prompt: "📐 Выберите размер постера"
+        type: choice
+        choices: ["A4", "A3", "A2"]
+      - id: color
+        prompt: "🎨 Выберите цветность"
+        type: choice
+        choices: ["color", "bw"]
+      - id: quantity
+        prompt: "🔢 Количество экземпляров (1–5)"
+        type: integer
+        min: 1
+        max: 5
+    limits:
+      max_per_order: 5

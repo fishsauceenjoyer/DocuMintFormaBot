@@ -1,0 +1,61 @@
+# ============================================
+# Base business configuration
+# ============================================
+# This file contains the general business structure:
+# version, currencies, delivery prices, payment details,
+# and allowed countries.
+#
+# ⚠️  This demo project processes no personal data.
+# Lines related to personal identifiers and per-document routing
+# were removed together with the previously bundled services.
+#
+# Edit this file to change business-wide settings without
+# touching Python code.
+
+version: "1.0"
+
+# ── Currencies ────────────────────────────────
+currencies:
+  supported: ["EUR", "PLN"]
+  default: "EUR"
+
+# ── Delivery prices ───────────────────────────
+delivery:
+  price:
+    PLN: 20
+    EUR: 5
+
+# ── Payment details ───────────────────────────
+payment_methods:
+  blik: |
+    💳 Blik перевод на номер телефона:
+    Номер: +48 123 456 789
+    Получатель: Demo Print Ltd.
+  uah: |
+    🇺🇦 Перевод на гривневую карту ПриватБанк:
+    Карта: 5168 7456 3456 7890
+    Получатель: Иванова А.
+  usdt: "₿ USDT (TRC20): TXYZ... (адрес кошелька)"
+
+# ── Allowed destination countries ─────────────
+countries:
+  PL:
+    en: "Poland"
+    ru: "Польша"
+    uk: "Польща"
+  RU:
+    en: "Russia"
+    ru: "Россия"
+    uk: "Росія"
+  RS:
+    en: "Serbia"
+    ru: "Сербия"
+    uk: "Сербія"
+  AM:
+    en: "Armenia"
+    ru: "Армения"
+    uk: "Вірменія"
+
+# ── Routing keys (document code → env var) ────
+# Empty since Epic 1: no PD-collecting services remain.
+routing_keys: {}

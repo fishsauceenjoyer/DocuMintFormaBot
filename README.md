@@ -1,0 +1,592 @@
+# DocuMintFormaBot 🗺
+
+**Telegram bot for poster printing services** — a complete order-processing FSM
+(Finite State Machine) with multi-language support, inline keyboards, cart
+management, delivery/payment options, and a manager/admin panel.
+
+> 🔍 This is a **demo** project. The business logic (document types, prices,
+> routing keys) lives in a single config file — drop in your own data to
+> repurpose the bot for any print-on-demand scenario.
+
+> ⚖️ **Legal notice:** this project does **not** collect, store or process
+> personal data (ID numbers, dates of birth, residential addresses, demo_document,
+> demo_service data, etc.). All data used in code, configuration and tests is
+> **demonstration-only** and generated for local development purposes.
+
+---
+
+## Features
+
+- 🌍 **Multi-language** — English, Russian, Ukrainian (auto-detected from
+  Telegram settings, falls back to English)
+- 📋 **Product catalogue** — choose from demo poster prints (Terminator,
+  Predator) or plug in your own services via the config
+- 📝 **Dynamic field questionnaire** — each document type defines its own set
+  of input fields
+- 🛒 **Cart** — add multiple documents of different types in a single order
+- 🚚 **Delivery / pickup** — enter courier address or choose self-pickup
+- 💳 **Payment methods** — configurable (demo: Blik, UAH card, USDT)
+- 📤 **Order routing** — each document type can be forwarded to a different
+  manager chat
+- ⚡ **Fast order** — regular customers can send a free-form message bypassing
+  the step-by-step wizard
+- 🆘 **Contact manager** — help button forwards user info to support
+- 📦 **Manager panel** — send ready documents and tracking numbers back to clients
+- 📊 **Stats** — `/orders`, `/stats` for the admin
+- 🐳 **Docker-ready** — multi-stage build + `docker-compose.yml`
+
+---
+
+## Screenshots
+
+See [docs/README.md](docs/README.md) for the full screenshot gallery.
+
+| Main menu | Document selection | Field filling | Payment |
+|---|---|---|---|
+| ![Main menu](docs/screenshots/main_menu.png) | ![Document choice](docs/screenshots/document_choice.png) | ![Field filling](docs/screenshots/field_filling.png) | ![Payment](docs/screenshots/payment.png) |
+
+> 📸 **Note:** Screenshots are placeholder images. Run the bot locally and
+> replace them with real captures from your Telegram client.
+
+---
+
+## Project structure
+
+```
+documintformabot/
+├── main.py                  # Entry point
+├── config.py                # Runtime config (token, routing, DB)
+├── data/
+│   └── business_config.py   # 📌 Business data: document types, prices,
+│                            #    fields, payment details, routing keys
+├── db/
+│   ├── models.py            # SQLAlchemy models (User, Order, …)
+│   └── crud.py              # CRUD operations
+├── fsm/
+│   └── states.py            # FSM states
+├── handlers/
+│   ├── start.py             # /start, main menu
+│   ├── order.py             # Main order FSM flow
+│   ├── fast_order.py        # Fast order for repeat customers
+│   └── admin.py             # Manager panel
+├── templates/
+│   ├── fields.py            # Field class
+│   └── documents.py         # Thin wrapper over data/business_config.py
+├── utils/
+│   ├── auth.py              # Admin-only decorator
+│   ├── i18n.py              # i18n manager + user_language() helper
+│   ├── middleware.py         # Logging / user registration middleware
+│   └── router.py             # Order routing to manager chats
+├── keyboards/
+│   └── buttons.py           # Inline keyboards
+├── locales/
+│   ├── en.json              # English translations
+│   ├── ru.json              # Russian translations
+│   └── uk.json              # Ukrainian translations
+├── tests/                   # Pytest unit tests (failover-ready)
+├── Dockerfile               # Multi-stage build
+├── docker-compose.yml       # Bot + optional Redis
+└── .env.example             # Environment variable template
+```
+
+---
+
+## Quick start
+
+### 1. Clone & setup environment
+
+```bash
+# Clone the repository
+git clone https://github.com/fishsauceenjoyer/DocuMintFormaBot.git
+cd DocuMintFormaBot
+
+# Install uv (if not already installed)
+# Windows:
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# Linux / Mac:
+# curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment and install dependencies
+uv sync --python 3.11
+```
+
+### 2. Configure `.env`
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` in any text editor. Minimum required changes:
+
+| Variable | Description | How to get |
+|----------|-------------|------------|
+| `BOT_TOKEN` | Telegram bot token | Create a bot via [@BotFather](https://t.me/BotFather) → `/newbot` |
+| `ADMIN_USERNAME` | Your Telegram username | Open Telegram → Settings → Username (e.g. `@yourname`) |
+| `ROUTING_DEFAULT` | Chat ID for manager | See instructions below |
+
+**⚠️ Important: Create manager chats BEFORE setting routing IDs**
+
+1. Create a **private Telegram group** for each document type (or one common group)
+2. Add your bot `@DocuMintFormaBot` to the group as an **administrator**
+3. Send any message in the group (e.g. `/start`)
+4. Get the group chat ID:
+   - Forward that message to [@userinfobot](https://t.me/userinfobot) — it will show the chat ID
+   - Or use the bot's own logging: after sending a message in the group, check the bot console output for `Chat ID: -100xxxxxxxxxx`
+5. **Critical:** Group chat IDs for bots always start with `-100` (e.g. `-100123456789`). Do NOT use personal chat IDs.
+6. Paste the IDs into `.env`:
+   ```env
+   ROUTING_POSTER_TERMINATOR1=-100123456789
+   ROUTING_POSTER_TERMINATOR2=-100987654321
+   ROUTING_POSTER_PREDATOR=-100123456788
+   ROUTING_DEFAULT=-100123456786
+   ```
+
+**Common pitfalls:**
+- ❌ Don't use your personal Telegram user ID (e.g. `123456789`) — the bot cannot message users who haven't started it
+- ❌ Don't use numeric IDs without `-100` prefix for groups — Telegram API requires the supergroup format
+- ✅ Always add the bot to the group first and grant it admin rights
+
+### 3. Run
+
+```bash
+# Locally (via uv — no venv activation needed)
+uv run python main.py
+
+# Or with Docker
+docker compose up --build -d
+docker compose logs -f
+docker compose down
+```
+
+---
+
+## Configuration
+
+### `.env`
+
+```env
+# REQUIRED
+BOT_TOKEN=your_bot_token_here
+ADMIN_USERNAME=your_admin_username
+
+# Routing — chat IDs for each document type (demo posters)
+ROUTING_POSTER_TERMINATOR1=-100123456789
+ROUTING_POSTER_TERMINATOR2=-100987654321
+ROUTING_POSTER_PREDATOR=-100123456788
+ROUTING_DEFAULT=-100123456789
+
+# Payment details — shown to customer after order
+PAYMENT_BLIK="Blik przelew na numer telefonu: ..."
+PAYMENT_UAH="Перевод на гривневую карту: ..."
+PAYMENT_USDT="USDT (TRC20): ..."
+
+# Database (SQLite for dev, PostgreSQL for production)
+DATABASE_URL=sqlite:///bot.db
+```
+
+### `data/business_config.py`
+
+This is **the only file you need to edit** to customise the bot for your own
+business. It defines:
+
+| Item               | Description                                  |
+|--------------------|----------------------------------------------|
+| `DOCUMENT_TEMPLATES` | Document types, display names (RU/UK/EN), fields, prices (PLN & EUR) |
+| `ROUTING_KEYS`       | Maps document codes → environment variable names |
+| `DELIVERY_PRICE_*`   | Delivery cost                                 |
+| `PAYMENT_DETAILS`    | Payment instructions shown to customers       |
+
+### Prices (demo)
+
+| Product                            | PLN  | EUR  |
+|------------------------------------|------|------|
+| 🎬 Terminator 1 poster             | 40   | 10   |
+| 🎬 Terminator 2 poster             | 60   | 15   |
+| 🌌 Predator poster                 | 80   | 20   |
+| 🚚 Delivery                        | +20  | +5   |
+
+### Business configuration files
+
+The repository ships two business config files:
+
+| File | Purpose |
+|------|---------|
+| `data/business_config.py` | **Active** — loads services from `configs/*.yaml` (demo posters) |
+| `data/business_config_demo.py` | **Reference** — self-contained demo poster config (Терминатор 1/2, Хищник) — **not imported** |
+
+The active config is `configs/base.yaml` + `configs/services.yaml`, read through
+`config/loader.py` (YAML), so business data can be edited without touching Python.
+`data/business_config_demo.py` exists as a standalone reference and is **not
+imported** at runtime.
+
+---
+
+## Демо-режим (печать постеров)
+
+Бот поставляется с **демо-конфигом** для печати постеров
+(`data/business_config_demo.py`). Он определяет три услуги:
+
+- 🎬 **Терминатор 1** — базовая цена 10 € / 40 zł
+- 🎬 **Терминатор 2** — базовая цена 15 € / 60 zł
+- 🎬 **Хищник** — базовая цена 20 € / 80 zł
+
+Каждая услуга имеет поля:
+
+| Поле | Тип | Варианты |
+|------|-----|----------|
+| `size` | choice | A4, A3, A2 |
+| `color` | choice | color (цветной), bw (чёрно-белый) |
+| `quantity` | integer | 1–5 |
+
+**Ценообразование:** базовая цена + надбавка за размер + надбавка за цветность.
+
+| Размер | Надбавка (EUR) | Надбавка (PLN) |
+|--------|----------------|----------------|
+| A4 | +0 | +0 |
+| A3 | +5 | +20 |
+| A2 | +10 | +40 |
+
+| Цветность | Надбавка (EUR) | Надбавка (PLN) |
+|-----------|----------------|----------------|
+| bw | +0 | +0 |
+| color | +3 | +12 |
+
+### Как переключиться на демо-режим
+
+1. **Скопируйте** демо-конфиг в активный файл:
+   ```bash
+   cp data/business_config_demo.py data/business_config.py
+   ```
+   (или переименуйте, сохранив резервную копию активного конфига).
+
+2. **Обновите `.env`** — добавьте routing-переменные для постеров:
+   ```env
+   ROUTING_POSTER_TERMINATOR1=-100123456789
+   ROUTING_POSTER_TERMINATOR2=-100123456789
+   ROUTING_POSTER_PREDATOR=-100123456789
+   ROUTING_DEFAULT=-100123456789
+   ```
+
+3. **Локализация** — переводы для постеров уже добавлены в
+   `locales/ru.json`, `locales/en.json`, `locales/uk.json`.
+
+4. **Перезапустите бота**:
+   ```bash
+   uv run python main.py
+   ```
+
+### Обратная совместимость
+
+- Демо-конфиг постеров (`data/business_config_demo.py`) не импортируется по умолчанию —
+  он остаётся как автономный справочник.
+- Существующие тесты (`tests/test_business_config.py`) продолжают работать,
+  так как активный конфиг не меняется.
+- Новые тесты для демо-конфига: `tests/test_demo_config.py`.
+
+
+---
+
+## Переменные окружения
+
+Полный шаблон со всеми переменными находится в [`.env.example`](.env.example).
+Скопируйте его перед запуском:
+
+```bash
+cp .env.example .env
+```
+
+| Переменная | Обязательна | Описание |
+|---|---|---|
+| `BOT_TOKEN` | ✅ | Токен бота от [@BotFather](https://t.me/BotFather) |
+| `ADMIN_USERNAME` | ✅ | Имя пользователя админа в Telegram (без `@`) |
+| `ROUTING_POSTER_TERMINATOR1` | ❌ | Chat ID для заказов на постер «Терминатор 1» |
+| `ROUTING_POSTER_TERMINATOR2` | ❌ | Chat ID для заказов на постер «Терминатор 2» |
+| `ROUTING_POSTER_PREDATOR` | ❌ | Chat ID для заказов на постер «Хищник» |
+| `ROUTING_DEFAULT` | ✅ | Chat ID по умолчанию (fallback) |
+| `MANAGER_ID` | ❌ | Chat ID для fallback-уведомлений об ошибках |
+| `PAYMENT_BLIK` | ❌ | Реквизиты Blik |
+| `PAYMENT_UAH` | ❌ | Реквизиты UAH-перевода |
+| `PAYMENT_USDT` | ❌ | USDT-кошелёк |
+| `DATABASE_URL` | ❌ | URL базы данных (SQLite / PostgreSQL / MySQL) |
+| `REDIS_URL` | ❌ | URL Redis для FSM (опционально, для продакшена) |
+
+---
+
+## Admin commands
+
+| Command                         | Description                        |
+|---------------------------------|------------------------------------|
+| `/send_doc ORDER_123ABC`        | Send a completed document          |
+| `/track ORDER_123ABC TRACK123`  | Send a tracking number             |
+| `/orders`                       | List all orders                    |
+| `/stats`                        | Order statistics                   |
+| `/help_admin`                   | Admin help                         |
+
+---
+
+## Running tests
+
+```bash
+# Default — all tests use mocks (no Telegram API needed)
+uv run pytest -v
+
+# If you have a real bot token and network — test real API
+uv run pytest -v --with-real-api
+
+# All tests with coverage
+uv run pytest --cov=. -v
+
+# Security audit (bandit)
+uv run bandit -r . -f txt
+```
+
+## Database migrations
+
+This project uses **Alembic** for schema versioning. The initial migration
+`migrations/versions/138da28f5512_initial_schema.py` captures the current SQLAlchemy
+models (`users`, `document_types`, `orders`, `order_items`).
+
+### First-time setup
+
+```bash
+# Alembic is included in dev dependencies — just sync
+uv sync
+
+# Apply all migrations to the local SQLite database
+uv run alembic upgrade head
+```
+
+### Common commands
+
+```bash
+# Create a new empty migration
+uv run alembic revision -m "describe your change"
+
+# Autogenerate a migration from model changes (best-effort; review before applying)
+uv run alembic revision --autogenerate -m "describe your change"
+
+# Apply migrations
+uv run alembic upgrade head
+
+# Downgrade one step
+uv run alembic downgrade -1
+
+# Show current revision
+uv run alembic current
+```
+
+### Switching environments
+
+`migrations/env.py` reads `DATABASE_URL` from the environment, so the same
+migrations work for SQLite, PostgreSQL, and MySQL without code changes:
+
+```env
+# Local development
+DATABASE_URL=sqlite:///bot.db
+
+# Production
+DATABASE_URL=postgresql://user:pass@host/db
+```
+
+The test suite has a **failover mechanism**: by default all tests use mocked
+Telegram objects and run completely offline. Pass `--with-real-api` to test
+against the live Telegram API (requires `BOT_TOKEN` + internet connectivity).
+The connectivity probe (`test_telegram_api_dns_resolves`) runs every session
+and switches all downstream tests to mocks when the API is unreachable.
+
+---
+
+## Manual testing (smoke test)
+
+After starting the bot, walk through this quick check list from a Telegram
+client to confirm everything works.
+
+### Happy path (new order)
+
+1. **Start** – send `/start` → you should see the main menu with 3 buttons
+2. **New order** – tap *"📋 New order"* → product list appears
+3. **Select product** – tap *"🎬 Terminator 1"* → quantity prompt with the
+   price in EUR (e.g. `10 €`)
+4. **Pick quantity** – tap `2` → field questionnaire starts
+5. **Fill fields** – answer each field (e.g. type "John Doe" for "Full name")
+   → after the last field the cart is updated and delivery choice appears
+6. **Delivery** – tap *"✅ Yes, delivery"* → enter delivery details
+7. **Payment** – tap *"💰 Proceed to payment"* → cart summary + payment options
+8. **Choose payment** – tap *"💳 Blik"* → payment details + receipt request
+9. **Send fake receipt** – send any photo → you should see *"Order #… accepted!
+   Estimated processing time: 5–7 business days."*
+
+### Fast order
+
+1. From main menu tap *"👤 I'm a regular customer"* → intro text
+2. Type any message and send → you should see *"Your request has been sent to
+   the manager!"*
+
+### Language auto-detection
+
+Change your Telegram client language to **English**, **Russian**, or **Ukrainian**
+and repeat the happy path. The bot should use the matching locale.
+
+### Admin panel (optional)
+
+If you set `ADMIN_USERNAME` to your own Telegram handle in `.env`:
+- `/orders` – should list the order created above
+- `/stats` – should show order counts
+- `/help_admin` – admin command reference
+- `/send_doc ORDER_…` – send a document back (requires the order ID from
+  the manager notification chat)
+
+---
+
+## For developers
+
+```bash
+# Sync dependencies
+uv sync
+
+# Format
+uv run black .
+uv run isort .
+
+# Lint
+uv run flake8 .
+
+# Type checking
+uv run mypy .
+
+# Security audit
+uv run bandit -r . -f txt
+
+# Tests
+uv run pytest -v
+uv run pytest --cov=. -v
+
+# Or use Makefile shortcuts
+make sync        # uv sync
+make test        # uv run pytest -q
+make lint        # black + isort + flake8 + mypy
+make format      # black + isort
+make run         # uv run python main.py
+```
+
+---
+
+## Quality Pipeline (CI/CD)
+
+The repository uses **AI-Driven Quality Gates** on every push to any `feat/*` or `fix/*` branch and on
+every Pull Request. The pipeline runs two jobs:
+
+| Job | What it checks | Tools |
+|---|---|---|
+| 🛡️ `quality_and_security` | Formatting, lint, type hints, security vulnerabilities | `black`, `flake8`, `mypy`, `bandit` |
+| 🧪 `automated_testing` | Unit/integration tests + coverage | `pytest`, `pytest-cov` |
+
+The test job runs **only if** the quality & security job passes. This prevents
+merging code with style violations, type errors, or known security issues.
+
+**Local equivalent:**
+```bash
+# Run the full quality gate locally
+uv run black --check .
+uv run flake8 .
+uv run mypy .
+uv run bandit -r . -f txt
+uv run pytest -v --cov=. --cov-report=term-missing
+```
+
+---
+
+## AI-Driven QA Prompts
+
+The repository includes 6 reusable prompt templates for AI-assisted quality
+assurance. Store them in `prompts/` and load into Cline/Obsidian to automate
+security audits, mutation testing, config validation, PR review, development,
+and test generation.
+
+| Template | Role | Target Model | Purpose |
+|---|---|---|---|
+| `prompts/security_audit_deepseek.md` | Security Auditor | DeepSeek-R1 | Audit `bandit` output and code snippets for vulnerabilities |
+| `prompts/mutation_tester_cline.md` | Mutant Killer | DeepSeek-V4 | Kill surviving mutants and close coverage gaps |
+| `prompts/config_tz_validator.md` | Business-Logic Validator | DeepSeek-R1 | Validate `business_config.py` against new ТЗ |
+| `prompts/role_pr_reviewer.md` | PR Reviewer | DeepSeek-R1 / Claude 3.5 Sonnet | Enforce architecture, security, and testability |
+| `prompts/role_developer.md` | Developer | DeepSeek-V4 / Qwen-2.5-Coder | Implement features cleanly with uv stack |
+| `prompts/role_qa_automation.md` | QA Automation Engineer | DeepSeek-V4 / DeepSeek-R1 | Generate and validate pytest suites |
+
+**How to use:**
+1. Copy a template from `prompts/` into your scratchpad/note.
+2. Fill in the `{{placeholders}}` with actual code/diffs/logs.
+3. Run through Cline or paste into your preferred LLM.
+4. Iterate until the pipeline is green.
+
+---
+
+## Deployment (Timeweb Cloud)
+
+1. Create a **PostgreSQL** database (free tier available).
+2. Create a **Cloud Apps** Docker container.
+3. Set environment variables (see `.env.example`).
+4. Set health-check port to **8080**.
+5. Deploy — auto-rebuilds on git push.
+
+---
+
+## Uploading changes to GitHub from VS Code
+
+### First time setup
+
+1. **Create a Personal Access Token** on GitHub:
+   - Go to https://github.com/settings/tokens
+   - Click **Generate new token (classic)**
+   - Select scopes: `repo` (full control)
+   - Click **Generate token**
+   - **Copy the token** — it looks like `ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXX`
+   - Save it somewhere safe (you won't see it again)
+
+2. **Configure the remote** (one time):
+   ```bash
+   git remote add origin https://github.com/fishsauceenjoyer/DocuMintFormaBot.git
+   ```
+
+3. **Push the branch** (enter your GitHub username and the token as password):
+   ```bash
+   git push -u origin feat/your-branch-name
+   ```
+   - Username: `fishsauceenjoyer`
+   - Password: paste your **token** (`ghp_...`)
+
+### Each subsequent change
+
+**Option A — VS Code GUI (recommended):**
+1. Open **Source Control** tab (Ctrl+Shift+G)
+2. Stage files (click `+` next to each file)
+3. Write a commit message
+4. Click **Commit**
+5. Click **Sync Changes** or **Push**
+
+**Option B — Terminal:**
+```bash
+git add .
+git commit -m "feat: description of your change"
+git push
+```
+
+### If VS Code asks for credentials
+
+On Windows, VS Code may store your token in **Windows Credential Manager**:
+1. Open **Control Panel** → **Credential Manager** → **Windows Credentials**
+2. Under "Generic Credentials", find `git:https://github.com`
+3. Edit and replace the password with your new token
+
+---
+
+## TODO / Roadmap
+
+- [ ] **LLM-Driven QA Automation**: integrate custom prompt roles (`prompts/`) into the CI pipeline to auto-generate tests, review diffs, and validate `business_config.py` changes against requirements
+- [ ] **Mutation Testing**: add `mutmut` to the quality gates to measure real test effectiveness and avoid the "pesticide paradox" (tests passing but not catching regressions)
+- [ ] **Security Reporting**: integrate Bandit/SAST results into GitHub Security tab and auto-comment PRs with vulnerability summaries
+- [ ] **Database Seeding**: add CLI command `uv run python scripts/seed_db.py` for quick demo data initialization
+- [ ] **Telegram Payment Integration**: replace demo payment methods with real Telegram Payments / Stripe / LiqPay
+
+## License
+
+MIT
