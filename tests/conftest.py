@@ -309,6 +309,9 @@ async def mock_order_db(monkeypatch):
     Creates all tables from ``db.models.Base.metadata`` so handlers that
     touch the database (e.g. ``_generate_order_id``, ``process_payment_proof``)
     run against a clean in-memory schema instead of the real ``bot.db``.
+
+    Yields an ``AsyncSession`` (not a sessionmaker) so tests can pass it
+    directly to CRUD functions.
     """
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -322,7 +325,13 @@ async def mock_order_db(monkeypatch):
     import handlers.order as order_module
 
     monkeypatch.setattr(order_module, "AsyncSessionLocal", TestSession)
-    return TestSession
+
+    async with TestSession() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
+    await engine.dispose()
 
 
 # ── Integration-test database fixture ────────────────────────────────────
