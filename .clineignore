@@ -38,6 +38,3 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
-
-# Cross-repo isolation: forbid agent access to sibling QA repository
-../DocuMintFormaBot-Tests
