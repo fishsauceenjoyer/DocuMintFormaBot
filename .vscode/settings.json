@@ -1,7 +1,0 @@
-{
-    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
-    "python.analysis.extraPaths": [],
-    "python.analysis.disabled": [],
-    "python.analysis.typeCheckingMode": "basic",
-    "ollama-autocoder.model": "qwen2.5-coder:7b-instruct-q4_k_m"
-}

@@ -367,7 +367,7 @@ async def cmd_orders_list(message: Message, state: FSMContext):
 
         text = "📋 **Список заказов:**\n\n"
         for order in all_orders:
-            text += f"• {order.order_id} - {order.status} - {order.total_price} {currency_symbol('EUR')}\n"
+            text += f"• {order.order_id} - {order.status} - {order.total_price} {currency_symbol(order.currency)}\n"
 
         await message.answer(text, parse_mode="Markdown")
 
