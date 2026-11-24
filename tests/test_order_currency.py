@@ -59,7 +59,7 @@ async def test_get_order_by_id_currency(mock_order_db):
         "currency": "PLN",
         "status": "pending",
     }
-    order = await create_order(
+    await create_order(
         db=mock_order_db,
         order_id=order_data["order_id"],
         user_id=order_data["user_id"],

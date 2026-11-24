@@ -18,10 +18,7 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
 
 from aiogram.types import CallbackQuery, Message
-from services.pricing import currency_symbol
-from config.loader import get_loader
-
-# Import DB functions (lazy — imported inside handlers to avoid circular imports)
+from services.pricing import currency_symbol, document_price, delivery_price
 from db.crud import AsyncSessionLocal, create_order, create_order_item
 from db.models import Order
 from fsm.states import OrderState
@@ -38,9 +35,6 @@ _sessions_lock = asyncio.Lock()
 # ── Currency selection ──────────────────────────────────────────────
 # For the demo, default to EUR. Change this logic as needed.
 DEFAULT_CURRENCY = "EUR"
-
-# Module-level config loader
-_loader = get_loader()
 
 
 def _doc_name(template: Dict[str, Any], language: str) -> str:
@@ -71,11 +65,11 @@ def calculate_total_price(session: Dict[str, Any]) -> int:
     currency = session.get("currency", DEFAULT_CURRENCY)
     total = 0
     for item in session.get("cart", []):
-        price = _currency_price(currency, item["type"])
+        price = document_price(currency, item["type"])
         total += price * item["quantity"]
 
     if session.get("delivery"):
-        total += _delivery_price(currency)
+        total += delivery_price(currency)
 
     return total
 
@@ -127,7 +121,7 @@ async def process_document_choice(callback: CallbackQuery, state: FSMContext):
     session["current_field_index"] = 0
 
     currency = session.get("currency", DEFAULT_CURRENCY)
-    price = _currency_price(currency, doc_type)
+    price = document_price(currency, doc_type)
     sym = currency_symbol(currency)
     name = _doc_name(template, lang)
 
@@ -641,7 +635,7 @@ async def save_delivery(message: Message, state: FSMContext):
 
     currency = session.get("currency", DEFAULT_CURRENCY)
     sym = currency_symbol(currency)
-    del_price = _delivery_price(currency)
+    del_price = delivery_price(currency)
 
     text = i18n.get(
         "total_with_delivery",
@@ -796,7 +790,7 @@ async def process_payment_proof(message: Message, state: FSMContext):
         )
 
         for cart_item in cart:
-            price = _currency_price(
+            price = document_price(
                 session.get("currency", DEFAULT_CURRENCY), cart_item["type"]
             )
             await create_order_item(
@@ -911,13 +905,13 @@ async def callback_checkout(callback: CallbackQuery, state: FSMContext):
     for cart_item in session.get("cart", []):
         doc = get_template(cart_item["type"])
         name = _doc_name(doc, lang) if doc else cart_item["type"]
-        price = _currency_price(currency, cart_item["type"])
+        price = document_price(currency, cart_item["type"])
         item_total = price * cart_item["quantity"]
         summary_lines.append(f"📄 {name} x{cart_item['quantity']} = {item_total} {sym}")
 
     delivery = session.get("delivery")
     if delivery:
-        del_price = _delivery_price(currency)
+        del_price = delivery_price(currency)
         summary_lines.append(f"🚚 Delivery: +{del_price} {sym}")
         summary_lines.append(f"   📮 {delivery.get('name', '-')}")
     else:

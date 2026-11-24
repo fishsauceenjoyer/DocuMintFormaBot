@@ -229,10 +229,34 @@ class TestOrderCRUD:
         from db.crud import create_order, get_order_stats
 
         # Create orders with different statuses
-        await create_order(mock_db_session, "ORDER_S_1", 1, 100, "pending")
-        await create_order(mock_db_session, "ORDER_S_2", 1, 200, "paid")
-        await create_order(mock_db_session, "ORDER_S_3", 2, 150, "completed")
-        await create_order(mock_db_session, "ORDER_S_4", 2, 300, "cancelled")
+        await create_order(
+            mock_db_session,
+            order_id="ORDER_S_1",
+            user_id=1,
+            total_price=100,
+            status="pending",
+        )
+        await create_order(
+            mock_db_session,
+            order_id="ORDER_S_2",
+            user_id=1,
+            total_price=200,
+            status="paid",
+        )
+        await create_order(
+            mock_db_session,
+            order_id="ORDER_S_3",
+            user_id=2,
+            total_price=150,
+            status="completed",
+        )
+        await create_order(
+            mock_db_session,
+            order_id="ORDER_S_4",
+            user_id=2,
+            total_price=300,
+            status="cancelled",
+        )
 
         stats = await get_order_stats(mock_db_session)
         assert stats["total"] == 4
