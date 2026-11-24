@@ -17,7 +17,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
 
-from config import DELIVERY_PRICE_EUR, DELIVERY_PRICE_PLN
+from aiogram.types import CallbackQuery, Message
+from services.pricing import currency_symbol
 from config.loader import get_loader
 
 # Import DB functions (lazy — imported inside handlers to avoid circular imports)
@@ -40,19 +41,6 @@ DEFAULT_CURRENCY = "EUR"
 
 # Module-level config loader
 _loader = get_loader()
-
-
-def _currency_symbol(currency: str) -> str:
-    return "€" if currency == "EUR" else "zł"
-
-
-def _currency_price(currency: str, doc_code: str) -> int:
-    """Return the price for a document in the requested currency."""
-    return _loader.get_price(doc_code, currency)
-
-
-def _delivery_price(currency: str) -> int:
-    return DELIVERY_PRICE_EUR if currency == "EUR" else DELIVERY_PRICE_PLN
 
 
 def _doc_name(template: Dict[str, Any], language: str) -> str:
@@ -140,7 +128,7 @@ async def process_document_choice(callback: CallbackQuery, state: FSMContext):
 
     currency = session.get("currency", DEFAULT_CURRENCY)
     price = _currency_price(currency, doc_type)
-    sym = _currency_symbol(currency)
+    sym = currency_symbol(currency)
     name = _doc_name(template, lang)
 
     await state.update_data(current_step=f"Quantity: {name}")
@@ -586,7 +574,7 @@ async def process_delivery_choice(callback: CallbackQuery, state: FSMContext):
         session["total_price"] = total
 
         currency = session.get("currency", DEFAULT_CURRENCY)
-        sym = _currency_symbol(currency)
+        sym = currency_symbol(currency)
 
         text = i18n.get(
             "total_amount",
@@ -652,7 +640,7 @@ async def save_delivery(message: Message, state: FSMContext):
     session["total_price"] = total
 
     currency = session.get("currency", DEFAULT_CURRENCY)
-    sym = _currency_symbol(currency)
+    sym = currency_symbol(currency)
     del_price = _delivery_price(currency)
 
     text = i18n.get(
@@ -916,7 +904,7 @@ async def callback_checkout(callback: CallbackQuery, state: FSMContext):
     session["total_price"] = total
 
     currency = session.get("currency", DEFAULT_CURRENCY)
-    sym = _currency_symbol(currency)
+    sym = currency_symbol(currency)
 
     # Build cart summary
     summary_lines = []

@@ -9,6 +9,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
+from services.pricing import currency_symbol
+
 from db.crud import (
     AsyncSessionLocal,
     create_order,
@@ -36,6 +38,7 @@ class OrderManager:
                 order_id=order_data["order_id"],
                 user_id=order_data["user_id"],
                 total_price=order_data.get("total_price", 0),
+                currency=order_data.get("currency", "EUR"),
                 status=order_data.get("status", "pending"),
                 payment_method=order_data.get("payment_method"),
                 payment_proof_file_id=order_data.get("payment_proof_file_id"),

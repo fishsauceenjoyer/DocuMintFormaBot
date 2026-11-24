@@ -143,6 +143,7 @@ class Order(Base):
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     total_price: Mapped[int] = mapped_column(Integer, default=0)
+    currency: Mapped[str] = mapped_column(String(20), default="EUR")
     payment_method: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     payment_proof_file_id: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True
