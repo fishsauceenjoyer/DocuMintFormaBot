@@ -37,16 +37,6 @@ management, delivery/payment options, and a manager/admin panel.
 
 ---
 
-## Screenshots
-
-See [docs/README.md](docs/README.md) for the full screenshot gallery.
-
-| Main menu | Document selection | Field filling | Payment |
-|---|---|---|---|
-| ![Main menu](docs/screenshots/main_menu.png) | ![Document choice](docs/screenshots/document_choice.png) | ![Field filling](docs/screenshots/field_filling.png) | ![Payment](docs/screenshots/payment.png) |
-
-> 📸 **Note:** Screenshots are placeholder images. Run the bot locally and
-> replace them with real captures from your Telegram client.
 
 ---
 
@@ -107,7 +97,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 # curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Create virtual environment and install dependencies
-uv sync --python 3.11
+uv sync --python 3.12
 ```
 
 ### 2. Configure `.env`
@@ -211,13 +201,14 @@ The repository ships two business config files:
 
 | File | Purpose |
 |------|---------|
-| `data/business_config.py` | **Active** — loads services from `configs/*.yaml` (demo posters) |
+| `data/business_config.py` | **Active** — defines document types, prices, fields, delivery and payment details |
 | `data/business_config_demo.py` | **Reference** — self-contained demo poster config (Терминатор 1/2, Хищник) — **not imported** |
 
-The active config is `configs/base.yaml` + `configs/services.yaml`, read through
-`config/loader.py` (YAML), so business data can be edited without touching Python.
-`data/business_config_demo.py` exists as a standalone reference and is **not
-imported** at runtime.
+Runtime settings (bot token, routing chat IDs, payment details, database URL) are
+loaded from `.env` via `config_runtime.py`, which reads `data/business_config.py`
+for business defaults and overrides them with environment variables when present.
+`config/loader.py` exists as an optional YAML-based loader but is not wired into
+the runtime configuration path.
 
 ---
 
@@ -327,18 +318,30 @@ cp .env.example .env
 ## Running tests
 
 ```bash
-# Default — all tests use mocks (no Telegram API needed)
+# Default — all tests use mocked Telegram objects (offline, no token needed)
 uv run pytest -v
 
-# If you have a real bot token and network — test real API
+# Run with coverage report
+uv run pytest --cov=. -v --cov-report=term-missing
+
+# If you have a real bot token and network — test against live Telegram API
 uv run pytest -v --with-real-api
-
-# All tests with coverage
-uv run pytest --cov=. -v
-
-# Security audit (bandit)
-uv run bandit -r . -f txt
 ```
+
+Tests are organized with pytest markers: `fast`, `slow`, `integration`, `services`, `utils`, `e2e`, `handlers`, `fsm`. Database integration tests run against an isolated in-memory SQLite database with Alembic migrations applied (`alembic upgrade head`), so no persistent `bot.db` is created. The failover fixture `telegram_available` (defined in `tests/conftest.py`) checks `api.telegram.org` reachability and a non-placeholder `BOT_TOKEN`; when either is missing, all tests silently fall back to mocks — ideal for offline CI.
+
+### Quality Gates
+
+| Tool | Purpose | Command |
+|------|---------|---------|
+| `black` | Code formatting | `uv run black --check .` |
+| `flake8` | Linting / style | `uv run flake8 .` |
+| `mypy` | Static type checking | `uv run mypy .` |
+| `bandit` | Security audit (SAST) | `uv run bandit -r handlers/ db/ utils/ data/ services/ fsm/ keyboards/ templates/ -f txt` |
+| `pytest` + `pytest-cov` | Unit/integration tests + coverage | `uv run pytest --cov=. -v` |
+| `scripts/run_mutations.py` | AST-based mutation testing | `uv run python scripts/run_mutations.py` |
+
+The CI pipeline (`.github/workflows/ci.yml`) runs `black`, `flake8`, `mypy`, and `bandit` first; `pytest` with coverage and Allure reporting runs only if the quality & security job passes.
 
 ## Database migrations
 
