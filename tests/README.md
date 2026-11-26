@@ -13,6 +13,7 @@ so they run offline without a real bot token.
 | `test_order.py` | Main order flow: document selection, quantity, delivery choice, cart validation |
 | `test_fast_order.py` | Fast-order callback (accessible/inaccessible message), message forwarding |
 | `test_router.py` | Order routing to manager chats, metadata storage on failure |
+| `test_routing_validation_and_errors.py` | Routing config validation and Telegram error propagation on manager notification |
 | `test_database_config.py` | SQLAlchemy engine initialisation with SQLite and PostgreSQL URLs |
 
 ---

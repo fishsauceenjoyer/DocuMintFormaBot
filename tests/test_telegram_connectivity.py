@@ -47,6 +47,9 @@ logger = logging.getLogger(__name__)
 # ── Connectivity test (offline-safe) ────────────────────────────────────
 
 
+@pytest.mark.skip(
+    reason="Hollow test: diagnostic DNS/TCP probe that always passes via assert True; asserts no behavioral contract"
+)
 def test_telegram_api_dns_resolves() -> None:
     """Verify that ``api.telegram.org`` resolves to at least one IP address.
 
